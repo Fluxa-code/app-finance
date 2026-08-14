@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.*;
 
 import java.time.OffsetDateTime;
 import java.util.Date;
@@ -33,7 +34,11 @@ public class Conta {
     private Integer diaFechamento;
     private Integer diaVencimento;
 
+    @CreationTimestamp
     private OffsetDateTime createdAt;
+
+    @UpdateTimestamp
     private OffsetDateTime updatedAt;
+
     private OffsetDateTime deletedAt;
 }
