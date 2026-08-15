@@ -3,41 +3,33 @@ package br.com.deivid.finance.conta;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/contas")
 public class ContaController {
 
-    private final ContaRepository repository;
+    private final ContaService service;
 
-    public ContaController(ContaRepository repository){
-        this.repository = repository;
+    public ContaController(ContaService service) {
+        this.service = service;
     }
 
     @GetMapping
-    public List<Conta> listar(){
-        return repository.findAll();
+    public List<Conta> listar() {
+        return service.listar();
     }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Conta criar(@Valid @RequestBody ContaRequest request){
-        if (repository.existsById(request.id())){
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Já existe uma conta com esse id");
-        }
+    public Conta criar(@Valid @RequestBody ContaRequest request) {
+        return service.criar(request);
+    }
 
-        Conta conta = new Conta();
-        conta.setId(request.id());
-        conta.setUserId(request.userId());
-        conta.setNome(request.nome());
-        conta.setTipo(request.tipo());
-        conta.setSaldoInicialCents(request.saldoInicialCents());
-        conta.setLimiteCents(request.limiteCents());
-        conta.setDiaFechamento(request.diaFechamento());
-        conta.setDiaVencimento(request.diaVencimento());
-
-        return repository.save(conta);
+    @GetMapping("/{id}/saldo")
+    public SaldoResponse saldo(@PathVariable UUID id) {
+        return service.saldo(id);
     }
 }
