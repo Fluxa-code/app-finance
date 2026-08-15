@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/transacoes")
@@ -19,6 +20,20 @@ public class TransacaoController {
     @GetMapping
     public List<Transacao> listar() {
         return service.listarTodas();
+    }
+
+    // extrato de uma conta:  GET /transacoes/conta/{contaId}
+    @GetMapping("/conta/{contaId}")
+    public List<Transacao> extratoDaConta(@PathVariable UUID contaId) {
+        return service.extratoDaConta(contaId);
+    }
+
+    // extrato do mês:  GET /transacoes/mes?userId=...&ano=2026&mes=8
+    @GetMapping("/mes")
+    public List<Transacao> extratoDoMes(@RequestParam UUID userId,
+                                        @RequestParam int ano,
+                                        @RequestParam int mes) {
+        return service.extratoDoMes(userId, ano, mes);
     }
 
     @PostMapping

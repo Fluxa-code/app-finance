@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -23,6 +24,26 @@ public class TransacaoService {
 
     public List<Transacao> listarTodas() {
         return repository.findAll();
+    }
+
+    /** Extrato de uma conta — todos os lançamentos, do mais recente pro mais antigo. */
+    public List<Transacao> extratoDaConta(UUID contaId) {
+        return repository.findByAccountIdAndDeletedAtIsNullOrderByDataDesc(contaId);
+    }
+
+    /** Extrato de um mês do usuário (ex.: agosto/2026). */
+    public List<Transacao> extratoDoMes(UUID userId, int ano, int mes) {
+        if (mes < 1 || mes > 12) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Mês deve estar entre 1 e 12");
+        }
+
+        // monta o intervalo do mês: do dia 1 até o último dia
+        LocalDate inicio = LocalDate.of(ano, mes, 1);
+        LocalDate fim = inicio.withDayOfMonth(inicio.lengthOfMonth());
+
+        return repository.findByUserIdAndDataBetweenAndDeletedAtIsNullOrderByDataDesc(
+                userId, inicio, fim);
     }
 
     /**
