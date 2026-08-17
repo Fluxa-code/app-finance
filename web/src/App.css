@@ -242,3 +242,50 @@
   background: rgba(59, 130, 246, 0.12);
   font-weight: 600;
 }
+
+/* topo com usuário logado */
+.topo-linha {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.usuario {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
+.sair {
+  padding: 0.35rem 0.8rem;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.sair:hover {
+  border-color: #e5484d;
+  color: #e5484d;
+}
+
+/* tela de login */
+.login-tela {
+  max-width: 420px;
+  padding-top: 5rem;
+}
+
+.alternar {
+  margin-top: 1rem;
+  border: none;
+  background: none;
+  color: #3b82f6;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0;
+}
