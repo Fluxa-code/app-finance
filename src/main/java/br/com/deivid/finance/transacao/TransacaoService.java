@@ -1,5 +1,6 @@
 package br.com.deivid.finance.transacao;
 
+import br.com.deivid.finance.fatura.FaturaService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,11 +16,14 @@ public class TransacaoService {
 
     private final TransacaoRepository repository;
     private final ParcelamentoRepository parcelamentoRepository;
+    private final FaturaService faturaService;
 
     public TransacaoService(TransacaoRepository repository,
-                            ParcelamentoRepository parcelamentoRepository) {
+                            ParcelamentoRepository parcelamentoRepository,
+                            FaturaService faturaService) {
         this.repository = repository;
         this.parcelamentoRepository = parcelamentoRepository;
+        this.faturaService = faturaService;
     }
 
     public List<Transacao> listarTodas() {
@@ -49,7 +53,11 @@ public class TransacaoService {
     /**
      * Cria uma transação simples: um gasto (SAIDA) ou uma receita (ENTRADA).
      * Transferência tem endpoint próprio.
+     *
+     * @Transactional AGORA: se for compra no cartão, além de salvar a transação
+     * o método pode CRIAR uma fatura. Duas gravações → precisam ser atômicas.
      */
+    @Transactional
     public Transacao criarSimples(TransacaoRequest req) {
 
         // transferência não passa por aqui — ela cria 2 linhas, é outro fluxo
@@ -81,6 +89,10 @@ public class TransacaoService {
         t.setValorCents(valorComSinal);
         t.setDescricao(req.descricao());
         t.setData(req.data());
+
+        // se for cartão, descobre/cria a fatura e amarra a transação nela.
+        // se não for cartão, resolverFatura devolve null e nada muda.
+        t.setInvoiceId(faturaService.resolverFatura(req.accountId(), req.data()));
 
         return repository.save(t);
     }
@@ -184,6 +196,10 @@ public class TransacaoService {
             parcela.setParcelamentoId(req.id());
             parcela.setParcelaNum(i);
             parcela.setParcelaTotal(req.parcelaTotal());
+
+            // cada parcela cai na fatura do mês DELA (uma data diferente por parcela)
+            parcela.setInvoiceId(faturaService.resolverFatura(req.accountId(), parcela.getData()));
+
             parcelas.add(parcela);
         }
 
