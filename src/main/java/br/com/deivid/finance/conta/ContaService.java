@@ -1,5 +1,6 @@
 package br.com.deivid.finance.conta;
 
+import br.com.deivid.finance.eventos.EventoService;
 import br.com.deivid.finance.transacao.TransacaoRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -13,11 +14,14 @@ public class ContaService {
 
     private final ContaRepository contaRepository;
     private final TransacaoRepository transacaoRepository;
+    private final EventoService eventos;
 
     public ContaService(ContaRepository contaRepository,
-                        TransacaoRepository transacaoRepository) {
+                        TransacaoRepository transacaoRepository,
+                        EventoService eventos) {
         this.contaRepository = contaRepository;
         this.transacaoRepository = transacaoRepository;
+        this.eventos = eventos;
     }
 
     /** Lista SÓ as contas do usuário logado. */
@@ -31,6 +35,14 @@ public class ContaService {
                     HttpStatus.CONFLICT, "Já existe uma conta com esse id");
         }
 
+        // cartão SEM dia de fechamento geraria erro lá na frente, na primeira
+        // compra (quando a fatura tentasse nascer). Barramos aqui, na origem:
+        // falhar CEDO com mensagem clara > falhar TARDE com erro obscuro.
+        if (request.tipo() == TipoConta.CARTAO_CREDITO && request.diaFechamento() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Cartão de crédito precisa do dia de fechamento");
+        }
+
         Conta conta = new Conta();
         conta.setId(request.id());
         conta.setUserId(userId);   // do token — nunca do corpo da requisição
@@ -41,7 +53,9 @@ public class ContaService {
         conta.setDiaFechamento(request.diaFechamento());
         conta.setDiaVencimento(request.diaVencimento());
 
-        return contaRepository.save(conta);
+        Conta salva = contaRepository.save(conta);
+        eventos.publicar("conta");   // outras telas do usuário recarregam
+        return salva;
     }
 
     /**

@@ -52,6 +52,17 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
   const [enviando, setEnviando] = useState(false);
   const [msgForm, setMsgForm] = useState<string | null>(null);
 
+  // formulário de NOVA CONTA
+  const [mostrarNovaConta, setMostrarNovaConta] = useState(false);
+  const [ncNome, setNcNome] = useState('');
+  const [ncTipo, setNcTipo] = useState('CORRENTE');
+  const [ncSaldo, setNcSaldo] = useState('');
+  const [ncLimite, setNcLimite] = useState('');
+  const [ncFechamento, setNcFechamento] = useState('');
+  const [ncVencimento, setNcVencimento] = useState('');
+  const [ncMsg, setNcMsg] = useState<string | null>(null);
+  const [ncEnviando, setNcEnviando] = useState(false);
+
   // sessão venceu no meio do uso? volta pro login
   function tratarFalha(err: unknown) {
     if (err instanceof NaoAutenticado) {
@@ -170,6 +181,60 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
     }
   }
 
+  // "45,90" ou "-120" -> centavos. null = campo vazio. Aceita negativo
+  // (conta pode nascer no vermelho), diferente do parse dos lançamentos.
+  function parseReais(txt: string): number | null {
+    if (!txt.trim()) return null;
+    const n = Number(txt.replace(',', '.'));
+    return Number.isFinite(n) ? Math.round(n * 100) : null;
+  }
+
+  async function criarConta(e: FormEvent) {
+    e.preventDefault();
+    setNcMsg(null);
+
+    if (!ncNome.trim()) {
+      setNcMsg('Dá um nome pra conta.');
+      return;
+    }
+
+    const cartao = ncTipo === 'CARTAO_CREDITO';
+    if (cartao && !ncFechamento) {
+      setNcMsg('Cartão de crédito precisa do dia de fechamento.');
+      return;
+    }
+
+    const body: Record<string, unknown> = {
+      id: crypto.randomUUID(),
+      nome: ncNome.trim(),
+      tipo: ncTipo,
+      saldoInicialCents: parseReais(ncSaldo) ?? 0,
+    };
+    if (cartao) {
+      body.limiteCents = parseReais(ncLimite) ?? undefined; // undefined some do JSON
+      body.diaFechamento = Number(ncFechamento);
+      if (ncVencimento) body.diaVencimento = Number(ncVencimento);
+    }
+
+    setNcEnviando(true);
+    try {
+      await api.post('/contas', body);
+      setNcNome('');
+      setNcSaldo('');
+      setNcLimite('');
+      setNcFechamento('');
+      setNcVencimento('');
+      setMostrarNovaConta(false);
+      setTick((t) => t + 1);
+    } catch (err) {
+      if (!tratarFalha(err)) {
+        setNcMsg(err instanceof Error ? err.message : 'Erro de conexão.');
+      }
+    } finally {
+      setNcEnviando(false);
+    }
+  }
+
   if (carregando) return <p className="status">Carregando…</p>;
   if (erro) return <p className="status erro">{erro}</p>;
 
@@ -198,7 +263,7 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
       </div>
 
       {saldos.length === 0 && (
-        <p className="vazio">Nenhuma conta ainda — crie a primeira pelo Postman ou aguarde a tela de contas. 😉</p>
+        <p className="vazio">Bem-vindo! Crie sua primeira conta no botão abaixo. 👇</p>
       )}
 
       <section className="cards">
@@ -217,7 +282,95 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
             </strong>
           </article>
         ))}
+
+        <button
+          type="button"
+          className="card nova-conta"
+          onClick={() => setMostrarNovaConta((v) => !v)}
+        >
+          + Nova conta
+        </button>
       </section>
+
+      {mostrarNovaConta && (
+        <form className="form form-conta" onSubmit={criarConta}>
+          <h2 className="form-titulo">Nova conta</h2>
+
+          <div className="linha">
+            <label>
+              Nome
+              <input
+                value={ncNome}
+                onChange={(e) => setNcNome(e.target.value)}
+                placeholder="Nubank, Carteira…"
+              />
+            </label>
+            <label>
+              Tipo
+              <select value={ncTipo} onChange={(e) => setNcTipo(e.target.value)}>
+                <option value="CORRENTE">Conta corrente</option>
+                <option value="POUPANCA">Poupança</option>
+                <option value="CARTEIRA">Carteira</option>
+                <option value="CARTAO_CREDITO">Cartão de crédito</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="linha">
+            <label>
+              Saldo inicial (R$)
+              <input
+                inputMode="decimal"
+                placeholder="0,00"
+                value={ncSaldo}
+                onChange={(e) => setNcSaldo(e.target.value)}
+              />
+            </label>
+            {ncTipo === 'CARTAO_CREDITO' && (
+              <label>
+                Limite (R$)
+                <input
+                  inputMode="decimal"
+                  placeholder="0,00"
+                  value={ncLimite}
+                  onChange={(e) => setNcLimite(e.target.value)}
+                />
+              </label>
+            )}
+          </div>
+
+          {ncTipo === 'CARTAO_CREDITO' && (
+            <div className="linha">
+              <label>
+                Dia de fechamento
+                <input
+                  type="number"
+                  min={1}
+                  max={31}
+                  value={ncFechamento}
+                  onChange={(e) => setNcFechamento(e.target.value)}
+                />
+              </label>
+              <label>
+                Dia de vencimento
+                <input
+                  type="number"
+                  min={1}
+                  max={31}
+                  value={ncVencimento}
+                  onChange={(e) => setNcVencimento(e.target.value)}
+                />
+              </label>
+            </div>
+          )}
+
+          <button type="submit" disabled={ncEnviando}>
+            {ncEnviando ? 'Criando…' : 'Criar conta'}
+          </button>
+
+          {ncMsg && <p className="msg">{ncMsg}</p>}
+        </form>
+      )}
 
       <footer className="total">
         Patrimônio total: <strong>{formatBRL(total)}</strong>
