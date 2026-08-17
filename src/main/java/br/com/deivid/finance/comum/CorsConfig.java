@@ -1,5 +1,6 @@
 package br.com.deivid.finance.comum;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
@@ -9,23 +10,24 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 /**
- * Libera o front (que roda em outra porta) a chamar esta API.
- * Agora como CorsConfigurationSource: é este bean que o Spring SECURITY
- * usa — o formato antigo (WebMvcConfigurer) não vale pra requisições
- * que passam pelo filtro de segurança.
+ * Quem pode chamar esta API.
  *
- * DEV: localhost:5173. PROD: trocar pelo domínio real do site.
+ * A lista vem da config (app.cors.origins): em dev é o Vite local,
+ * em produção é o domínio do Vercel. Nunca "*" — isso deixaria
+ * qualquer site do mundo chamar a API em nome do usuário logado.
  */
 @Configuration
 public class CorsConfig {
 
+    @Value("${app.cors.origins}")
+    private List<String> origens;   // aceita valores separados por vírgula
+
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
+        config.setAllowedOrigins(origens);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        // "*" inclui Content-Type e, principalmente, o Authorization do token
-        config.setAllowedHeaders(List.of("*"));
+        config.setAllowedHeaders(List.of("*"));   // inclui o Authorization do token
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

@@ -1,0 +1,39 @@
+# ============================================================
+# INFRAESTRUTURA COMO CODIGO.
+#
+# Este arquivo descreve o servico no Render. Em vez de clicar
+# em 20 campos do painel, o Render le isto do repositorio e
+# monta tudo. Se um dia precisar recriar o ambiente, e so
+# apontar pra ca de novo.
+#
+# Segredos NAO ficam aqui:
+#   sync: false        -> o Render pergunta o valor no painel
+#   generateValue: true -> o Render sorteia um valor forte sozinho
+# ============================================================
+services:
+  - type: web
+    name: fluxa-api
+    runtime: docker
+    plan: free
+    region: virginia          # free tier nao tem Sao Paulo
+    healthCheckPath: /health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+
+      # o Render gera um segredo aleatorio e forte.
+      # Nem eu nem voce chegamos a ver esse valor — o ideal.
+      - key: JWT_SECRET
+        generateValue: true
+
+      # estes voce preenche no painel (vem do Supabase)
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_USER
+        sync: false
+      - key: DATABASE_PASSWORD
+        sync: false
+
+      # dominio do front no Vercel (preenche depois que o front subir)
+      - key: CORS_ORIGINS
+        sync: false

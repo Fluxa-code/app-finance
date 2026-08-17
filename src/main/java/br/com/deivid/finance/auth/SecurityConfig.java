@@ -44,6 +44,8 @@ public class SecurityConfig {
                         // SSE fica aberto POR ENQUANTO: só transmite avisos
                         // "algo mudou", sem nenhum dado. Dívida: autenticar na etapa C.
                         .requestMatchers("/eventos").permitAll()
+                        // health check da plataforma — monitoramento não faz login
+                        .requestMatchers("/health").permitAll()
                         // 🔒 todo o resto exige token válido
                         .anyRequest().authenticated())
 

@@ -1,0 +1,14 @@
+# O que NAO entra na imagem Docker.
+# Menos arquivo = build mais rapido e imagem menor.
+
+web/                # o front vai pro Vercel, nao pro backend
+node_modules/
+target/             # build local; o Docker compila do zero
+.git/
+.idea/
+.claude/
+*.md
+compose.yaml        # banco local nao existe em producao
+
+# seguranca: garante que credencial local nunca entre na imagem
+src/main/resources/application-supabase.properties

@@ -31,3 +31,10 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Segredos — NUNCA versionar ###
+# perfil local com credencial de banco real
+src/main/resources/application-supabase.properties
+# convenção: qualquer *-local.properties fica de fora
+src/main/resources/application-*-local.properties
+.env.local

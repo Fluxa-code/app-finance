@@ -4,7 +4,8 @@
 // um lugar só trata sessão expirada.
 // ============================================================
 
-const API = 'http://localhost:8080';
+// vem do .env.development (npm run dev) ou .env.production (npm run build)
+const API = import.meta.env.VITE_API_URL;
 export const API_URL = API; // pro EventSource (SSE)
 
 // ---- sessão (token guardado no navegador) ----
