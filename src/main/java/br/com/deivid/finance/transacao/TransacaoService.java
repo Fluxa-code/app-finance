@@ -1,5 +1,6 @@
 package br.com.deivid.finance.transacao;
 
+import br.com.deivid.finance.eventos.EventoService;
 import br.com.deivid.finance.fatura.FaturaService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -17,13 +18,16 @@ public class TransacaoService {
     private final TransacaoRepository repository;
     private final ParcelamentoRepository parcelamentoRepository;
     private final FaturaService faturaService;
+    private final EventoService eventos;
 
     public TransacaoService(TransacaoRepository repository,
                             ParcelamentoRepository parcelamentoRepository,
-                            FaturaService faturaService) {
+                            FaturaService faturaService,
+                            EventoService eventos) {
         this.repository = repository;
         this.parcelamentoRepository = parcelamentoRepository;
         this.faturaService = faturaService;
+        this.eventos = eventos;
     }
 
     public List<Transacao> listarTodas() {
@@ -94,7 +98,9 @@ public class TransacaoService {
         // se não for cartão, resolverFatura devolve null e nada muda.
         t.setInvoiceId(faturaService.resolverFatura(req.accountId(), req.data()));
 
-        return repository.save(t);
+        Transacao salva = repository.save(t);
+        eventos.publicar("transacao");   // avisa as telas conectadas
+        return salva;
     }
 
     /**
@@ -144,7 +150,9 @@ public class TransacaoService {
         entrada.setTransferId(req.transferId());
 
         // saveAll grava as duas dentro da MESMA transação do banco
-        return repository.saveAll(List.of(saida, entrada));
+        List<Transacao> par = repository.saveAll(List.of(saida, entrada));
+        eventos.publicar("transferencia");
+        return par;
     }
 
     /**
@@ -203,6 +211,8 @@ public class TransacaoService {
             parcelas.add(parcela);
         }
 
-        return repository.saveAll(parcelas);
+        List<Transacao> salvas = repository.saveAll(parcelas);
+        eventos.publicar("parcelamento");
+        return salvas;
     }
 }

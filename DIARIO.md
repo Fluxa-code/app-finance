@@ -33,3 +33,14 @@ Transferência = 2 linhas irmãs (@Transactional: nascem juntas ou nenhuma).
 Saldo nunca é campo guardado — é sempre SUM(transações). Livro-razão.
 **Ideia de post:** por que uma compra em 10x vira 10 linhas, e como o centavo não some.
 **[📌 LINKEDIN — pendente]**
+
+## 2026-08-17 — Fatura + primeira tela + TEMPO REAL 🏆
+Fatura: compra no cartão cai na fatura certa pela regra do fechamento (dia<=fechamento →
+mês atual; senão → mês seguinte), find-or-create, fecha num mês e vence no seguinte.
+Front React/Vite: cards de saldo, formulários (gasto/transferência/parcelamento), extrato clicável.
+TEMPO REAL via SSE: cada tela mantém conexão aberta (GET /eventos), o service publica
+"mudanca" a cada lançamento, todas as telas recarregam sozinhas. O TESTE MÁGICO passou:
+duas janelas lado a lado, lancei numa, a outra atualizou sem F5.
+Bug de CSS aprendido: `.form button` (elemento genérico) venceu `.aba` por especificidade
+e pintou as abas de azul — seletor amplo pega quem não devia.
+**[📌 LINKEDIN — POSTADO com GIF das duas telas. O post campeão.]**

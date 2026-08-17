@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Fluxa — demo tempo real</title>
+<style>
+  body { margin: 0; font-family: system-ui, sans-serif; background: #0f1115; }
+  .topo { text-align: center; color: #e7e9ee; padding: 10px 0 6px; font-size: 14px; letter-spacing: .03em; }
+  .panes { display: flex; gap: 10px; padding: 0 10px 10px; height: calc(100vh - 40px); }
+  .pane { flex: 1; display: flex; flex-direction: column; border-radius: 10px; overflow: hidden; background: #fff; }
+  .rotulo { background: #1b1e26; color: #9aa4b2; font-size: 12px; padding: 6px 10px; text-transform: uppercase; letter-spacing: .08em; }
+  iframe { border: 0; flex: 1; width: 100%; }
+</style>
+</head>
+<body>
+  <div class="topo">Duas telas independentes — tempo real via SSE</div>
+  <div class="panes">
+    <div class="pane"><div class="rotulo">Tela A</div><iframe src="/"></iframe></div>
+    <div class="pane"><div class="rotulo">Tela B</div><iframe src="/"></iframe></div>
+  </div>
+</body>
+</html>

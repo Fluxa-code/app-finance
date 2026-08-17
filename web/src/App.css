@@ -109,7 +109,7 @@
   font-size: 1rem;
 }
 
-.form button {
+.form button[type='submit'] {
   margin-top: 0.5rem;
   padding: 0.7rem;
   border: none;
@@ -121,7 +121,7 @@
   cursor: pointer;
 }
 
-.form button:disabled {
+.form button[type='submit']:disabled {
   opacity: 0.6;
   cursor: default;
 }
@@ -129,4 +129,116 @@
 .form .msg {
   margin: 0;
   font-size: 0.9rem;
+}
+
+/* cards clicáveis */
+.card {
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.card:hover {
+  border-color: rgba(59, 130, 246, 0.6);
+}
+
+.card.selecionado {
+  border-color: #3b82f6;
+  border-width: 2px;
+}
+
+/* extrato */
+.extrato {
+  margin-top: 2rem;
+}
+
+.extrato h2 {
+  font-size: 1.15rem;
+  margin: 0 0 0.75rem;
+}
+
+.extrato ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid rgba(128, 128, 128, 0.25);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.extrato li {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.7rem 1.1rem;
+}
+
+.extrato li + li {
+  border-top: 1px solid rgba(128, 128, 128, 0.18);
+}
+
+.ext-data {
+  font-size: 0.82rem;
+  opacity: 0.6;
+  min-width: 5.5rem;
+}
+
+.ext-desc {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ext-valor {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.ext-valor.negativo {
+  color: #e5484d;
+}
+
+.ext-valor.positivo {
+  color: #30a46c;
+}
+
+.badge {
+  font-style: normal;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(128, 128, 128, 0.15);
+}
+
+.badge.transf {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+}
+
+.vazio {
+  opacity: 0.6;
+  padding: 1rem 0;
+}
+
+/* abas do formulário */
+.abas {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.aba {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.aba.ativa {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.12);
+  font-weight: 600;
 }
