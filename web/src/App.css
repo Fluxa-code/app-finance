@@ -68,3 +68,65 @@
 .status.erro {
   color: #e5484d;
 }
+
+/* formulário */
+.form {
+  margin-top: 2.5rem;
+  padding: 1.5rem;
+  border: 1px solid rgba(128, 128, 128, 0.25);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.form-titulo {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.form .linha {
+  display: flex;
+  gap: 1rem;
+}
+
+.form label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.form input,
+.form select {
+  padding: 0.55rem 0.65rem;
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font-size: 1rem;
+}
+
+.form button {
+  margin-top: 0.5rem;
+  padding: 0.7rem;
+  border: none;
+  border-radius: 8px;
+  background: #3b82f6;
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.form button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.form .msg {
+  margin: 0;
+  font-size: 0.9rem;
+}
