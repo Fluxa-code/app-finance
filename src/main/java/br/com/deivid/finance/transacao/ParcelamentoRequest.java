@@ -7,9 +7,9 @@ import jakarta.validation.constraints.Positive;
 import java.time.LocalDate;
 import java.util.UUID;
 
+// SEM userId — a identidade vem do token
 public record ParcelamentoRequest(
         @NotNull UUID id,               // id do cabeçalho (gerado no cliente)
-        @NotNull UUID userId,
         @NotNull UUID accountId,
         UUID categoryId,                // opcional
         String descricao,

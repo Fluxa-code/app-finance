@@ -44,3 +44,18 @@ duas janelas lado a lado, lancei numa, a outra atualizou sem F5.
 Bug de CSS aprendido: `.form button` (elemento genérico) venceu `.aba` por especificidade
 e pintou as abas de azul — seletor amplo pega quem não devia.
 **[📌 LINKEDIN — POSTADO com GIF das duas telas. O post campeão.]**
+
+## 2026-08-17 — Autenticação: a casa trancou
+BCrypt: senha NUNCA é guardada — só o hash irreversível ($2a$10$ = versão + custo 2^10).
+JWT: crachá assinado. Payload é legível por qualquer um (base64), forjável por ninguém
+(assinatura HMAC com segredo do servidor). Stateless: servidor não guarda sessão.
+Detalhes de gente grande: mesma mensagem pra email inexistente e senha errada (bloqueia
+user enumeration); conta alheia responde 404 e não 403 (não confirma nem a existência);
+CSRF desligado porque não há cookie de sessão.
+A virada: userId saiu dos DTOs — identidade agora se PROVA (token), não se declara (campo).
+Teste final: 2º usuário logado vê [] em /contas e 404 no saldo da minha conta. Multi-tenant.
+Erro no caminho: chamei método de repository que eu tinha apagado semanas antes — o
+compilador pegou antes de rodar ("cannot find symbol").
+**Ideia de post:** "como dois usuários vivem no mesmo banco sem nunca se ver" /
+"por que tua senha não existe em lugar nenhum (e é assim que deve ser)".
+**[📌 LINKEDIN — pendente]**

@@ -4,9 +4,9 @@ import jakarta.validation.constraints.*;
 
 import java.util.UUID;
 
+// repara: SEM userId. A identidade vem do token, nunca do corpo da requisição.
 public record ContaRequest(
         @NotNull UUID id,
-        @NotNull UUID userId,
         @NotBlank String nome,
         @NotNull TipoConta tipo,
         long saldoInicialCents,

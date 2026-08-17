@@ -6,9 +6,9 @@ import jakarta.validation.constraints.Positive;
 import java.time.LocalDate;
 import java.util.UUID;
 
+// SEM userId — a identidade vem do token
 public record TransacaoRequest(
         @NotNull UUID id,            // gerado no cliente (offline-first)
-        @NotNull UUID userId,        // temporário — sai quando houver auth
         @NotNull UUID accountId,
         UUID categoryId,             // opcional
         @NotNull TipoTransacao tipo,

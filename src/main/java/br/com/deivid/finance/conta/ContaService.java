@@ -20,11 +20,12 @@ public class ContaService {
         this.transacaoRepository = transacaoRepository;
     }
 
-    public List<Conta> listar() {
-        return contaRepository.findAll();
+    /** Lista SÓ as contas do usuário logado. */
+    public List<Conta> listar(UUID userId) {
+        return contaRepository.findByUserIdAndDeletedAtIsNull(userId);
     }
 
-    public Conta criar(ContaRequest request) {
+    public Conta criar(ContaRequest request, UUID userId) {
         if (contaRepository.existsById(request.id())) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "Já existe uma conta com esse id");
@@ -32,7 +33,7 @@ public class ContaService {
 
         Conta conta = new Conta();
         conta.setId(request.id());
-        conta.setUserId(request.userId());
+        conta.setUserId(userId);   // do token — nunca do corpo da requisição
         conta.setNome(request.nome());
         conta.setTipo(request.tipo());
         conta.setSaldoInicialCents(request.saldoInicialCents());
@@ -45,10 +46,13 @@ public class ContaService {
 
     /**
      * Saldo atual = saldo inicial da conta + soma de todos os lançamentos.
-     * Cruza accounts + transactions — por isso mora no service, não no controller.
+     *
+     * Conta de OUTRO usuário responde 404 (e não 403): pro estranho, essa conta
+     * simplesmente "não existe" — não confirmamos nem a existência dela.
      */
-    public SaldoResponse saldo(UUID contaId) {
+    public SaldoResponse saldo(UUID contaId, UUID userId) {
         Conta conta = contaRepository.findById(contaId)
+                .filter(c -> c.getUserId().equals(userId))
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Conta não encontrada"));
 
