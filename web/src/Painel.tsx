@@ -1,96 +1,48 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, API_URL, getNome, limparSessao, NaoAutenticado } from './api';
+import { useTema } from './useTema';
+import Dashboard from './Dashboard';
+import ModalLancamento from './ModalLancamento';
+import {
+  CORES, formatBRL, formatData, TIPO_ICONE, TIPO_LABEL,
+  type Categoria, type Conta, type GastoCategoria, type Saldo, type Transacao,
+} from './tipos';
 import './App.css';
 
-type Conta = { id: string; nome: string; tipo: string };
-type Saldo = { contaId: string; nome: string; saldoCents: number };
-type Transacao = {
-  id: string;
-  accountId: string;
-  categoryId: string | null;
-  descricao: string | null;
-  valorCents: number;
-  data: string;
-  tipo: string;
-  parcelaNum: number | null;
-  parcelaTotal: number | null;
-  transferId: string | null;
-  parcelamentoId: string | null;
-};
-
-type Categoria = { id: string; nome: string; tipo: string; cor: string | null };
-type GastoCategoria = {
-  categoriaId: string | null;
-  nome: string | null;
-  cor: string | null;
-  totalCents: number;
-  quantidade: number;
-};
-
-type Modo = 'SIMPLES' | 'TRANSFERENCIA' | 'PARCELAMENTO';
-
-const CORES = ['#3b82f6', '#e5484d', '#30a46c', '#f5a524', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
-
-const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
-
-const TIPO_LABEL: Record<string, string> = {
-  CORRENTE: 'Conta corrente',
-  POUPANCA: 'Poupança',
-  CARTEIRA: 'Carteira',
-  CARTAO_CREDITO: 'Cartão de crédito',
-};
-
-function formatBRL(cents: number): string {
-  return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
-
-function formatData(iso: string): string {
-  return iso.split('-').reverse().join('/');
-}
+type Vista = { tela: 'INICIO' } | { tela: 'CONTA'; id: string } | { tela: 'CATEGORIAS' };
 
 export default function Painel({ aoSair }: { aoSair: () => void }) {
+  const { tema, alternar } = useTema();
+
   const [contas, setContas] = useState<Conta[]>([]);
   const [saldos, setSaldos] = useState<Saldo[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [recentes, setRecentes] = useState<Transacao[]>([]);
+  const [transacoesMes, setTransacoesMes] = useState<Transacao[]>([]);
+  const [relatorio, setRelatorio] = useState<GastoCategoria[]>([]);
+  const [extrato, setExtrato] = useState<Transacao[]>([]);
+
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
 
-  const [contaSel, setContaSel] = useState<string | null>(null);
-  const [extrato, setExtrato] = useState<Transacao[]>([]);
+  const [vista, setVista] = useState<Vista>({ tela: 'INICIO' });
+  const [modalAberto, setModalAberto] = useState(false);
+  const [menuMobile, setMenuMobile] = useState(false);
 
-  // categorias + relatório
-  const [categorias, setCategorias] = useState<Categoria[]>([]);
-  const [relatorio, setRelatorio] = useState<GastoCategoria[]>([]);
   const hoje = new Date();
-  const [relAno, setRelAno] = useState(hoje.getFullYear());
-  const [relMes, setRelMes] = useState(hoje.getMonth() + 1);
-  const [mostrarCategorias, setMostrarCategorias] = useState(false);
-  const [novaCatNome, setNovaCatNome] = useState('');
-  const [novaCatTipo, setNovaCatTipo] = useState('DESPESA');
-  const [novaCatCor, setNovaCatCor] = useState(CORES[0]);
-  const [catMsg, setCatMsg] = useState<string | null>(null);
-  const [categoriaId, setCategoriaId] = useState('');
+  const [ano, setAno] = useState(hoje.getFullYear());
+  const [mes, setMes] = useState(hoje.getMonth() + 1);
 
-  const [modo, setModo] = useState<Modo>('SIMPLES');
-  const [tipo, setTipo] = useState<'SAIDA' | 'ENTRADA'>('SAIDA');
-  const [contaId, setContaId] = useState('');
-  const [contaDestino, setContaDestino] = useState('');
-  const [valor, setValor] = useState('');
-  const [parcelas, setParcelas] = useState('2');
-  const [descricao, setDescricao] = useState('');
-  const [data, setData] = useState(() => new Date().toISOString().slice(0, 10));
-  const [enviando, setEnviando] = useState(false);
-  const [msgForm, setMsgForm] = useState<string | null>(null);
-
-  // edição de lançamento (null = ninguém sendo editado)
+  // edição de lançamento
   const [editando, setEditando] = useState<Transacao | null>(null);
   const [edValor, setEdValor] = useState('');
   const [edDescricao, setEdDescricao] = useState('');
   const [edData, setEdData] = useState('');
   const [edMsg, setEdMsg] = useState<string | null>(null);
 
-  // formulário de NOVA CONTA
-  const [mostrarNovaConta, setMostrarNovaConta] = useState(false);
+  // nova conta
+  const [novaContaAberta, setNovaContaAberta] = useState(false);
   const [ncNome, setNcNome] = useState('');
   const [ncTipo, setNcTipo] = useState('CORRENTE');
   const [ncSaldo, setNcSaldo] = useState('');
@@ -98,9 +50,13 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
   const [ncFechamento, setNcFechamento] = useState('');
   const [ncVencimento, setNcVencimento] = useState('');
   const [ncMsg, setNcMsg] = useState<string | null>(null);
-  const [ncEnviando, setNcEnviando] = useState(false);
 
-  // sessão venceu no meio do uso? volta pro login
+  // nova categoria
+  const [novaCatNome, setNovaCatNome] = useState('');
+  const [novaCatTipo, setNovaCatTipo] = useState('DESPESA');
+  const [novaCatCor, setNovaCatCor] = useState(CORES[0]);
+  const [catMsg, setCatMsg] = useState<string | null>(null);
+
   function tratarFalha(err: unknown) {
     if (err instanceof NaoAutenticado) {
       aoSair();
@@ -109,166 +65,109 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
     return false;
   }
 
-  useEffect(() => {
-    async function carregar() {
-      try {
-        const contasResp = await api.get<Conta[]>('/contas');
-        setContas(contasResp);
-        setContaId((atual) => atual || (contasResp[0]?.id ?? ''));
-        setContaDestino((atual) => atual || (contasResp[1]?.id ?? ''));
+  const recarregar = () => setTick((t) => t + 1);
 
-        const saldosResp = await Promise.all(
-          contasResp.map((c) => api.get<Saldo>(`/contas/${c.id}/saldo`)),
-        );
-        setSaldos(saldosResp);
+  // dados gerais
+  useEffect(() => {
+    (async () => {
+      try {
+        const c = await api.get<Conta[]>('/contas');
+        setContas(c);
+        setSaldos(await Promise.all(c.map((x) => api.get<Saldo>(`/contas/${x.id}/saldo`))));
         setCategorias(await api.get<Categoria[]>('/categorias'));
+        setRecentes(await api.get<Transacao[]>('/transacoes'));
         setErro(null);
       } catch (err) {
-        if (!tratarFalha(err)) {
-          setErro('Não consegui falar com a API. O backend está rodando?');
-        }
+        if (!tratarFalha(err)) setErro('Não consegui falar com a API. O backend está rodando?');
       } finally {
         setCarregando(false);
       }
-    }
-    carregar();
+    })();
   }, [tick]);
 
+  // dados do mês (KPIs + relatório)
   useEffect(() => {
-    if (!contaSel) {
-      setExtrato([]);
-      return;
-    }
-    api
-      .get<Transacao[]>(`/transacoes/conta/${contaSel}`)
+    (async () => {
+      try {
+        setTransacoesMes(await api.get<Transacao[]>(`/transacoes/mes?ano=${ano}&mes=${mes}`));
+        setRelatorio(await api.get<GastoCategoria[]>(`/categorias/relatorio?ano=${ano}&mes=${mes}`));
+      } catch (err) {
+        if (!tratarFalha(err)) { setTransacoesMes([]); setRelatorio([]); }
+      }
+    })();
+  }, [ano, mes, tick]);
+
+  // extrato da conta aberta
+  useEffect(() => {
+    if (vista.tela !== 'CONTA') { setExtrato([]); return; }
+    api.get<Transacao[]>(`/transacoes/conta/${vista.id}`)
       .then(setExtrato)
-      .catch((err) => {
-        if (!tratarFalha(err)) setExtrato([]);
-      });
-  }, [contaSel, tick]);
+      .catch((err) => { if (!tratarFalha(err)) setExtrato([]); });
+  }, [vista, tick]);
 
-  // relatório do mês escolhido — recarrega ao trocar mês/ano ou ao mudar algo
-  useEffect(() => {
-    api
-      .get<GastoCategoria[]>(`/categorias/relatorio?ano=${relAno}&mes=${relMes}`)
-      .then(setRelatorio)
-      .catch((err) => {
-        if (!tratarFalha(err)) setRelatorio([]);
-      });
-  }, [relAno, relMes, tick]);
-
-  // tempo real (SSE) — endpoint aberto, só avisa "algo mudou"
+  // tempo real
   useEffect(() => {
     const es = new EventSource(`${API_URL}/eventos`);
     es.addEventListener('mudanca', () => setTick((t) => t + 1));
     return () => es.close();
   }, []);
 
-  async function enviar(e: FormEvent) {
+  // ---------- ações ----------
+  function parseReais(txt: string): number | null {
+    if (!txt.trim()) return null;
+    const n = Number(txt.replace(',', '.'));
+    return Number.isFinite(n) ? Math.round(n * 100) : null;
+  }
+
+  async function criarConta(e: FormEvent) {
     e.preventDefault();
-    setMsgForm(null);
+    setNcMsg(null);
+    if (!ncNome.trim()) return setNcMsg('Dá um nome pra conta.');
 
-    const valorReais = Number(valor.replace(',', '.'));
-    if (!valorReais || valorReais <= 0) {
-      setMsgForm('Informe um valor maior que zero.');
-      return;
+    const cartao = ncTipo === 'CARTAO_CREDITO';
+    if (cartao && !ncFechamento) return setNcMsg('Cartão precisa do dia de fechamento.');
+
+    const body: Record<string, unknown> = {
+      id: crypto.randomUUID(),
+      nome: ncNome.trim(),
+      tipo: ncTipo,
+      saldoInicialCents: parseReais(ncSaldo) ?? 0,
+    };
+    if (cartao) {
+      body.limiteCents = parseReais(ncLimite) ?? undefined;
+      body.diaFechamento = Number(ncFechamento);
+      if (ncVencimento) body.diaVencimento = Number(ncVencimento);
     }
-    const valorCents = Math.round(valorReais * 100);
-
-    let caminho = '/transacoes';
-    let body: Record<string, unknown>;
-
-    if (modo === 'SIMPLES') {
-      body = {
-        id: crypto.randomUUID(),
-        accountId: contaId,
-        categoryId: categoriaId || undefined,   // vazio = sem categoria
-        tipo,
-        valorCents,
-        descricao,
-        data,
-      };
-    } else if (modo === 'TRANSFERENCIA') {
-      if (contaId === contaDestino) {
-        setMsgForm('Origem e destino não podem ser a mesma conta.');
-        return;
-      }
-      caminho = '/transacoes/transferencias';
-      body = {
-        transferId: crypto.randomUUID(),
-        origemId: crypto.randomUUID(),
-        destinoId: crypto.randomUUID(),
-        contaOrigemId: contaId,
-        contaDestinoId: contaDestino,
-        valorCents,
-        descricao,
-        data,
-      };
-    } else {
-      const n = Number(parcelas);
-      if (!Number.isInteger(n) || n < 2) {
-        setMsgForm('Parcelamento precisa de 2 parcelas ou mais.');
-        return;
-      }
-      caminho = '/transacoes/parcelamentos';
-      body = {
-        id: crypto.randomUUID(),
-        accountId: contaId,
-        categoryId: categoriaId || undefined,
-        descricao,
-        valorTotalCents: valorCents,
-        parcelaTotal: n,
-        dataPrimeira: data,
-      };
-    }
-
-    setEnviando(true);
     try {
-      await api.post(caminho, body);
-      setValor('');
-      setDescricao('');
-      setMsgForm('Lançado! ✅');
-      setTick((t) => t + 1);
+      await api.post('/contas', body);
+      setNcNome(''); setNcSaldo(''); setNcLimite(''); setNcFechamento(''); setNcVencimento('');
+      setNovaContaAberta(false);
+      recarregar();
     } catch (err) {
-      if (!tratarFalha(err)) {
-        setMsgForm(err instanceof Error ? err.message : 'Erro de conexão.');
-      }
-    } finally {
-      setEnviando(false);
+      if (!tratarFalha(err)) setNcMsg(err instanceof Error ? err.message : 'Erro.');
     }
   }
 
   async function criarCategoria(e: FormEvent) {
     e.preventDefault();
     setCatMsg(null);
-    if (!novaCatNome.trim()) {
-      setCatMsg('Dá um nome pra categoria.');
-      return;
-    }
+    if (!novaCatNome.trim()) return setCatMsg('Dá um nome pra categoria.');
     try {
       await api.post('/categorias', {
-        id: crypto.randomUUID(),
-        nome: novaCatNome.trim(),
-        tipo: novaCatTipo,
-        cor: novaCatCor,
+        id: crypto.randomUUID(), nome: novaCatNome.trim(),
+        tipo: novaCatTipo, cor: novaCatCor,
       });
       setNovaCatNome('');
-      setTick((t) => t + 1);
+      recarregar();
     } catch (err) {
-      if (!tratarFalha(err)) {
-        setCatMsg(err instanceof Error ? err.message : 'Erro ao criar.');
-      }
+      if (!tratarFalha(err)) setCatMsg(err instanceof Error ? err.message : 'Erro.');
     }
   }
 
   async function excluirCategoria(c: Categoria) {
-    if (!confirm(`Excluir a categoria "${c.nome}"? Os lançamentos dela viram "Sem categoria".`)) return;
-    try {
-      await api.del(`/categorias/${c.id}`);
-      setTick((t) => t + 1);
-    } catch (err) {
-      if (!tratarFalha(err)) alert(err instanceof Error ? err.message : 'Erro ao excluir.');
-    }
+    if (!confirm(`Excluir "${c.nome}"? Os lançamentos dela viram "Sem categoria".`)) return;
+    try { await api.del(`/categorias/${c.id}`); recarregar(); }
+    catch (err) { if (!tratarFalha(err)) alert('Erro ao excluir.'); }
   }
 
   function abrirEdicao(t: Transacao) {
@@ -282,14 +181,8 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
   async function salvarEdicao(e: FormEvent) {
     e.preventDefault();
     if (!editando) return;
-    setEdMsg(null);
-
     const valorReais = Number(edValor.replace(',', '.'));
-    if (!valorReais || valorReais <= 0) {
-      setEdMsg('Informe um valor maior que zero.');
-      return;
-    }
-
+    if (!valorReais || valorReais <= 0) return setEdMsg('Valor maior que zero.');
     try {
       await api.put(`/transacoes/${editando.id}`, {
         accountId: editando.accountId,
@@ -299,559 +192,262 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
         data: edData,
       });
       setEditando(null);
-      setTick((t) => t + 1);
+      recarregar();
     } catch (err) {
-      if (!tratarFalha(err)) {
-        setEdMsg(err instanceof Error ? err.message : 'Erro ao salvar.');
-      }
+      if (!tratarFalha(err)) setEdMsg(err instanceof Error ? err.message : 'Erro.');
     }
   }
 
-  async function excluir(t: Transacao) {
-    // grupo? avisa que vai tudo junto
+  async function excluirTransacao(t: Transacao) {
     const aviso = t.transferId
       ? 'Excluir esta transferência? Os dois lados serão removidos.'
       : t.parcelamentoId
         ? `Excluir esta compra parcelada? TODAS as ${t.parcelaTotal} parcelas serão removidas.`
         : `Excluir "${t.descricao || 'este lançamento'}"?`;
-
     if (!confirm(aviso)) return;
-
-    try {
-      await api.del(`/transacoes/${t.id}`);
-      setTick((x) => x + 1);
-    } catch (err) {
-      if (!tratarFalha(err)) {
-        alert(err instanceof Error ? err.message : 'Erro ao excluir.');
-      }
-    }
-  }
-
-  // "45,90" ou "-120" -> centavos. null = campo vazio. Aceita negativo
-  // (conta pode nascer no vermelho), diferente do parse dos lançamentos.
-  function parseReais(txt: string): number | null {
-    if (!txt.trim()) return null;
-    const n = Number(txt.replace(',', '.'));
-    return Number.isFinite(n) ? Math.round(n * 100) : null;
-  }
-
-  async function criarConta(e: FormEvent) {
-    e.preventDefault();
-    setNcMsg(null);
-
-    if (!ncNome.trim()) {
-      setNcMsg('Dá um nome pra conta.');
-      return;
-    }
-
-    const cartao = ncTipo === 'CARTAO_CREDITO';
-    if (cartao && !ncFechamento) {
-      setNcMsg('Cartão de crédito precisa do dia de fechamento.');
-      return;
-    }
-
-    const body: Record<string, unknown> = {
-      id: crypto.randomUUID(),
-      nome: ncNome.trim(),
-      tipo: ncTipo,
-      saldoInicialCents: parseReais(ncSaldo) ?? 0,
-    };
-    if (cartao) {
-      body.limiteCents = parseReais(ncLimite) ?? undefined; // undefined some do JSON
-      body.diaFechamento = Number(ncFechamento);
-      if (ncVencimento) body.diaVencimento = Number(ncVencimento);
-    }
-
-    setNcEnviando(true);
-    try {
-      await api.post('/contas', body);
-      setNcNome('');
-      setNcSaldo('');
-      setNcLimite('');
-      setNcFechamento('');
-      setNcVencimento('');
-      setMostrarNovaConta(false);
-      setTick((t) => t + 1);
-    } catch (err) {
-      if (!tratarFalha(err)) {
-        setNcMsg(err instanceof Error ? err.message : 'Erro de conexão.');
-      }
-    } finally {
-      setNcEnviando(false);
-    }
+    try { await api.del(`/transacoes/${t.id}`); recarregar(); }
+    catch (err) { if (!tratarFalha(err)) alert('Erro ao excluir.'); }
   }
 
   if (carregando) return <p className="status">Carregando…</p>;
   if (erro) return <p className="status erro">{erro}</p>;
 
-  const total = saldos.reduce((soma, s) => soma + s.saldoCents, 0);
-  const contaSelNome = saldos.find((s) => s.contaId === contaSel)?.nome;
-  const totalGasto = relatorio.reduce((soma, g) => soma + g.totalCents, 0);
+  const saldoDe = (id: string) => saldos.find((s) => s.contaId === id)?.saldoCents ?? 0;
+  const contaAberta = vista.tela === 'CONTA' ? contas.find((c) => c.id === vista.id) : null;
 
   return (
-    <main className="app">
-      <div className="topo-linha">
-        <div>
-          <h1>Fluxa</h1>
-          <p className="subtitulo">Minhas contas — clique numa conta pra ver o extrato</p>
+    <div className={menuMobile ? 'shell menu-aberto' : 'shell'}>
+      {/* ============ SIDEBAR ============ */}
+      <aside className="sidebar">
+        <div className="marca">
+          <div className="logo">K</div>
+          <div>
+            <h1>Kofre</h1>
+            <span className="marca-sub">Fluxa Labs</span>
+          </div>
         </div>
-        <div className="usuario">
-          <span>{getNome()}</span>
-          <button
-            className="sair"
-            onClick={() => {
-              limparSessao();
-              aoSair();
-            }}
-          >
-            Sair
-          </button>
-        </div>
-      </div>
 
-      {saldos.length === 0 && (
-        <p className="vazio">Bem-vindo! Crie sua primeira conta no botão abaixo. 👇</p>
-      )}
-
-      <section className="cards">
-        {saldos.map((s) => (
-          <article
-            className={contaSel === s.contaId ? 'card selecionado' : 'card'}
-            key={s.contaId}
-            onClick={() => setContaSel((sel) => (sel === s.contaId ? null : s.contaId))}
-          >
-            <span className="tipo">
-              {TIPO_LABEL[contas.find((c) => c.id === s.contaId)?.tipo ?? ''] ?? ''}
-            </span>
-            <h2>{s.nome}</h2>
-            <strong className={s.saldoCents < 0 ? 'saldo negativo' : 'saldo'}>
-              {formatBRL(s.saldoCents)}
-            </strong>
-          </article>
-        ))}
-
-        <button
-          type="button"
-          className="card nova-conta"
-          onClick={() => setMostrarNovaConta((v) => !v)}
-        >
-          + Nova conta
+        <button className="btn-novo" onClick={() => setModalAberto(true)}>
+          <span>+</span> Novo lançamento
         </button>
-      </section>
 
-      {mostrarNovaConta && (
-        <form className="form form-conta" onSubmit={criarConta}>
-          <h2 className="form-titulo">Nova conta</h2>
-
-          <div className="linha">
-            <label>
-              Nome
-              <input
-                value={ncNome}
-                onChange={(e) => setNcNome(e.target.value)}
-                placeholder="Nubank, Carteira…"
-              />
-            </label>
-            <label>
-              Tipo
-              <select value={ncTipo} onChange={(e) => setNcTipo(e.target.value)}>
-                <option value="CORRENTE">Conta corrente</option>
-                <option value="POUPANCA">Poupança</option>
-                <option value="CARTEIRA">Carteira</option>
-                <option value="CARTAO_CREDITO">Cartão de crédito</option>
-              </select>
-            </label>
-          </div>
-
-          <div className="linha">
-            <label>
-              Saldo inicial (R$)
-              <input
-                inputMode="decimal"
-                placeholder="0,00"
-                value={ncSaldo}
-                onChange={(e) => setNcSaldo(e.target.value)}
-              />
-            </label>
-            {ncTipo === 'CARTAO_CREDITO' && (
-              <label>
-                Limite (R$)
-                <input
-                  inputMode="decimal"
-                  placeholder="0,00"
-                  value={ncLimite}
-                  onChange={(e) => setNcLimite(e.target.value)}
-                />
-              </label>
-            )}
-          </div>
-
-          {ncTipo === 'CARTAO_CREDITO' && (
-            <div className="linha">
-              <label>
-                Dia de fechamento
-                <input
-                  type="number"
-                  min={1}
-                  max={31}
-                  value={ncFechamento}
-                  onChange={(e) => setNcFechamento(e.target.value)}
-                />
-              </label>
-              <label>
-                Dia de vencimento
-                <input
-                  type="number"
-                  min={1}
-                  max={31}
-                  value={ncVencimento}
-                  onChange={(e) => setNcVencimento(e.target.value)}
-                />
-              </label>
-            </div>
-          )}
-
-          <button type="submit" disabled={ncEnviando}>
-            {ncEnviando ? 'Criando…' : 'Criar conta'}
+        <nav className="nav">
+          <button
+            className={vista.tela === 'INICIO' ? 'nav-item ativo' : 'nav-item'}
+            onClick={() => { setVista({ tela: 'INICIO' }); setMenuMobile(false); }}
+          >
+            <span className="nav-icone">◧</span> Início
           </button>
+          <button
+            className={vista.tela === 'CATEGORIAS' ? 'nav-item ativo' : 'nav-item'}
+            onClick={() => { setVista({ tela: 'CATEGORIAS' }); setMenuMobile(false); }}
+          >
+            <span className="nav-icone">◈</span> Categorias
+          </button>
+        </nav>
 
-          {ncMsg && <p className="msg">{ncMsg}</p>}
-        </form>
-      )}
-
-      <footer className="total">
-        Patrimônio total: <strong>{formatBRL(total)}</strong>
-      </footer>
-
-      {/* ---------- RELATÓRIO: pra onde foi o dinheiro ---------- */}
-      <section className="relatorio">
-        <div className="rel-topo">
-          <h2>Gastos por categoria</h2>
-          <div className="rel-filtro">
-            <select value={relMes} onChange={(e) => setRelMes(Number(e.target.value))}>
-              {MESES.map((m, i) => (
-                <option key={m} value={i + 1}>{m}</option>
-              ))}
-            </select>
-            <select value={relAno} onChange={(e) => setRelAno(Number(e.target.value))}>
-              {[relAno - 1, relAno, relAno + 1].map((a) => (
-                <option key={a} value={a}>{a}</option>
-              ))}
-            </select>
-            <button type="button" className="btn-link" onClick={() => setMostrarCategorias((v) => !v)}>
-              {mostrarCategorias ? 'fechar' : 'gerenciar categorias'}
-            </button>
-          </div>
+        <div className="sec-titulo">
+          Contas
+          <button className="btn-mini" onClick={() => setNovaContaAberta((v) => !v)} title="Nova conta">+</button>
         </div>
 
-        {relatorio.length === 0 ? (
-          <p className="vazio">Nenhum gasto neste mês.</p>
-        ) : (
+        <ul className="lista-contas">
+          {contas.map((c) => (
+            <li key={c.id}>
+              <button
+                className={vista.tela === 'CONTA' && vista.id === c.id ? 'conta-item ativo' : 'conta-item'}
+                onClick={() => { setVista({ tela: 'CONTA', id: c.id }); setMenuMobile(false); }}
+              >
+                <span className="conta-icone">{TIPO_ICONE[c.tipo] ?? '💰'}</span>
+                <span className="conta-nome">{c.nome}</span>
+                <span className={saldoDe(c.id) < 0 ? 'conta-saldo negativo' : 'conta-saldo'}>
+                  {formatBRL(saldoDe(c.id))}
+                </span>
+              </button>
+            </li>
+          ))}
+          {contas.length === 0 && <li className="vazio-mini">Nenhuma conta ainda</li>}
+        </ul>
+
+        <div className="sidebar-rodape">
+          <span className="usuario-nome">{getNome()}</span>
+          <button className="btn-icone" onClick={alternar} title="Tema">
+            {tema === 'dark' ? '☀' : '☾'}
+          </button>
+          <button className="btn-icone" onClick={() => { limparSessao(); aoSair(); }} title="Sair">⏻</button>
+        </div>
+      </aside>
+
+      {/* fundo escuro que fecha o menu no celular */}
+      <div className="backdrop" onClick={() => setMenuMobile(false)} />
+
+      {/* ============ CONTEÚDO ============ */}
+      <main className="conteudo">
+        <button className="btn-menu" onClick={() => setMenuMobile(true)} title="Menu">☰</button>
+
+        {vista.tela === 'INICIO' && (
+          <Dashboard
+            saldos={saldos}
+            transacoesMes={transacoesMes}
+            recentes={recentes}
+            relatorio={relatorio}
+            categorias={categorias}
+            ano={ano}
+            mes={mes}
+            onTrocarMes={(a, m) => { setAno(a); setMes(m); }}
+            onVerConta={(id) => setVista({ tela: 'CONTA', id })}
+          />
+        )}
+
+        {vista.tela === 'CONTA' && contaAberta && (
           <>
-            <p className="rel-total">
-              Total gasto: <strong>{formatBRL(totalGasto)}</strong>
-            </p>
-            <ul className="barras">
-              {relatorio.map((g) => {
-                const pct = totalGasto > 0 ? (g.totalCents / totalGasto) * 100 : 0;
-                return (
-                  <li key={g.categoriaId ?? 'sem'}>
-                    <div className="barra-topo">
-                      <span className="barra-nome">
-                        <i className="ponto" style={{ background: g.cor ?? '#94a3b8' }} />
-                        {g.nome ?? 'Sem categoria'}
-                        <em className="qtd">{g.quantidade}x</em>
-                      </span>
-                      <span className="barra-valor">
-                        {formatBRL(g.totalCents)} <em>{pct.toFixed(0)}%</em>
-                      </span>
-                    </div>
-                    <div className="barra-trilho">
-                      <div
-                        className="barra-preenche"
-                        style={{ width: `${pct}%`, background: g.cor ?? '#94a3b8' }}
-                      />
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+            <header className="cabecalho">
+              <div>
+                <span className="cab-tipo">{TIPO_LABEL[contaAberta.tipo]}</span>
+                <h2>{contaAberta.nome}</h2>
+              </div>
+              <strong className={saldoDe(contaAberta.id) < 0 ? 'cab-saldo negativo' : 'cab-saldo'}>
+                {formatBRL(saldoDe(contaAberta.id))}
+              </strong>
+            </header>
+
+            <section className="bloco extrato">
+              <h2>Extrato</h2>
+              {extrato.length === 0 ? (
+                <p className="vazio">Nenhum lançamento nesta conta.</p>
+              ) : (
+                <ul>
+                  {extrato.map((t) =>
+                    editando?.id === t.id ? (
+                      <li key={t.id} className="editando">
+                        <form className="form-edicao" onSubmit={salvarEdicao}>
+                          <input type="date" value={edData} onChange={(e) => setEdData(e.target.value)} />
+                          <input value={edDescricao} onChange={(e) => setEdDescricao(e.target.value)} placeholder="Descrição" />
+                          <input inputMode="decimal" className="input-valor" value={edValor}
+                                 onChange={(e) => setEdValor(e.target.value)} placeholder="0,00" />
+                          <button type="submit" className="btn-ok">Salvar</button>
+                          <button type="button" className="btn-cancel" onClick={() => setEditando(null)}>Cancelar</button>
+                          {edMsg && <span className="msg-inline">{edMsg}</span>}
+                        </form>
+                      </li>
+                    ) : (
+                      <li key={t.id}>
+                        <span className="ext-data">{formatData(t.data)}</span>
+                        <span className="ext-desc">
+                          {t.descricao || '(sem descrição)'}
+                          {t.parcelaNum != null && <em className="badge">{t.parcelaNum}/{t.parcelaTotal}</em>}
+                          {t.tipo === 'TRANSFERENCIA' && <em className="badge transf">transferência</em>}
+                        </span>
+                        <span className={t.valorCents < 0 ? 'ext-valor negativo' : 'ext-valor positivo'}>
+                          {formatBRL(t.valorCents)}
+                        </span>
+                        <span className="acoes">
+                          {!t.transferId && !t.parcelamentoId && (
+                            <button className="btn-icone" title="Editar" onClick={() => abrirEdicao(t)}>✏️</button>
+                          )}
+                          <button className="btn-icone" title="Excluir" onClick={() => excluirTransacao(t)}>🗑️</button>
+                        </span>
+                      </li>
+                    ),
+                  )}
+                </ul>
+              )}
+            </section>
           </>
         )}
 
-        {mostrarCategorias && (
-          <div className="cat-gerenciar">
-            <form className="cat-form" onSubmit={criarCategoria}>
-              <input
-                value={novaCatNome}
-                onChange={(e) => setNovaCatNome(e.target.value)}
-                placeholder="Alimentação, Transporte…"
-              />
-              <select value={novaCatTipo} onChange={(e) => setNovaCatTipo(e.target.value)}>
-                <option value="DESPESA">Despesa</option>
-                <option value="RECEITA">Receita</option>
-              </select>
-              <div className="cores">
-                {CORES.map((cor) => (
-                  <button
-                    key={cor}
-                    type="button"
-                    className={novaCatCor === cor ? 'cor ativa' : 'cor'}
-                    style={{ background: cor }}
-                    onClick={() => setNovaCatCor(cor)}
-                    title={cor}
-                  />
-                ))}
-              </div>
-              <button type="submit" className="btn-ok">Criar</button>
-            </form>
-            {catMsg && <p className="msg">{catMsg}</p>}
-
-            <ul className="cat-lista">
-              {categorias.map((c) => (
-                <li key={c.id}>
-                  <i className="ponto" style={{ background: c.cor ?? '#94a3b8' }} />
-                  {c.nome}
-                  <em className="badge">{c.tipo === 'RECEITA' ? 'receita' : 'despesa'}</em>
-                  <button className="btn-icone" onClick={() => excluirCategoria(c)} title="Excluir">
-                    🗑️
-                  </button>
-                </li>
-              ))}
-              {categorias.length === 0 && <li className="vazio">Nenhuma categoria ainda.</li>}
-            </ul>
-          </div>
-        )}
-      </section>
-
-      {contaSel && (
-        <section className="extrato">
-          <h2>Extrato — {contaSelNome}</h2>
-          {extrato.length === 0 ? (
-            <p className="vazio">Nenhum lançamento nesta conta.</p>
-          ) : (
-            <ul>
-              {extrato.map((t) =>
-                editando?.id === t.id ? (
-                  // ---- modo edição ----
-                  <li key={t.id} className="editando">
-                    <form className="form-edicao" onSubmit={salvarEdicao}>
-                      <input
-                        type="date"
-                        value={edData}
-                        onChange={(e) => setEdData(e.target.value)}
-                      />
-                      <input
-                        value={edDescricao}
-                        onChange={(e) => setEdDescricao(e.target.value)}
-                        placeholder="Descrição"
-                      />
-                      <input
-                        inputMode="decimal"
-                        value={edValor}
-                        onChange={(e) => setEdValor(e.target.value)}
-                        placeholder="0,00"
-                        className="input-valor"
-                      />
-                      <button type="submit" className="btn-ok">Salvar</button>
-                      <button type="button" className="btn-cancel" onClick={() => setEditando(null)}>
-                        Cancelar
-                      </button>
-                      {edMsg && <span className="msg-inline">{edMsg}</span>}
-                    </form>
-                  </li>
-                ) : (
-                  // ---- modo leitura ----
-                  <li key={t.id}>
-                    <span className="ext-data">{formatData(t.data)}</span>
-                    <span className="ext-desc">
-                      {t.descricao || '(sem descrição)'}
-                      {t.parcelaNum != null && (
-                        <em className="badge">
-                          {t.parcelaNum}/{t.parcelaTotal}
-                        </em>
-                      )}
-                      {t.tipo === 'TRANSFERENCIA' && <em className="badge transf">transferência</em>}
-                    </span>
-                    <span className={t.valorCents < 0 ? 'ext-valor negativo' : 'ext-valor positivo'}>
-                      {formatBRL(t.valorCents)}
-                    </span>
-                    <span className="acoes">
-                      {/* transferência e parcela não são editáveis: fazem parte de um grupo */}
-                      {!t.transferId && !t.parcelamentoId && (
-                        <button className="btn-icone" title="Editar" onClick={() => abrirEdicao(t)}>
-                          ✏️
-                        </button>
-                      )}
-                      <button className="btn-icone" title="Excluir" onClick={() => excluir(t)}>
-                        🗑️
-                      </button>
-                    </span>
-                  </li>
-                ),
-              )}
-            </ul>
-          )}
-        </section>
-      )}
-
-      <form className="form" onSubmit={enviar}>
-        <div className="abas">
-          <button
-            type="button"
-            className={modo === 'SIMPLES' ? 'aba ativa' : 'aba'}
-            onClick={() => {
-              setModo('SIMPLES');
-              setMsgForm(null);
-            }}
-          >
-            Gasto / Receita
-          </button>
-          <button
-            type="button"
-            className={modo === 'TRANSFERENCIA' ? 'aba ativa' : 'aba'}
-            onClick={() => {
-              setModo('TRANSFERENCIA');
-              setMsgForm(null);
-            }}
-          >
-            Transferência
-          </button>
-          <button
-            type="button"
-            className={modo === 'PARCELAMENTO' ? 'aba ativa' : 'aba'}
-            onClick={() => {
-              setModo('PARCELAMENTO');
-              setMsgForm(null);
-            }}
-          >
-            Parcelamento
-          </button>
-        </div>
-
-        {modo === 'SIMPLES' && (
-          <div className="linha">
-            <label>
-              Tipo
-              <select value={tipo} onChange={(e) => setTipo(e.target.value as 'SAIDA' | 'ENTRADA')}>
-                <option value="SAIDA">Gasto</option>
-                <option value="ENTRADA">Receita</option>
-              </select>
-            </label>
-            <label>
-              Conta
-              <select value={contaId} onChange={(e) => setContaId(e.target.value)}>
-                {contas.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nome}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        )}
-
-        {modo === 'TRANSFERENCIA' && (
-          <div className="linha">
-            <label>
-              De
-              <select value={contaId} onChange={(e) => setContaId(e.target.value)}>
-                {contas.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nome}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Para
-              <select value={contaDestino} onChange={(e) => setContaDestino(e.target.value)}>
-                {contas.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nome}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        )}
-
-        {modo === 'PARCELAMENTO' && (
-          <div className="linha">
-            <label>
-              Conta
-              <select value={contaId} onChange={(e) => setContaId(e.target.value)}>
-                {contas.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nome}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Nº de parcelas
-              <input
-                type="number"
-                min={2}
-                max={48}
-                value={parcelas}
-                onChange={(e) => setParcelas(e.target.value)}
-              />
-            </label>
-          </div>
-        )}
-
-        <div className="linha">
-          <label>
-            {modo === 'PARCELAMENTO' ? 'Valor total (R$)' : 'Valor (R$)'}
-            <input
-              inputMode="decimal"
-              placeholder="0,00"
-              value={valor}
-              onChange={(e) => setValor(e.target.value)}
-            />
-          </label>
-          <label>
-            {modo === 'PARCELAMENTO' ? 'Data da 1ª parcela' : 'Data'}
-            <input type="date" value={data} onChange={(e) => setData(e.target.value)} />
-          </label>
-        </div>
-
-        <div className="linha">
-          <label>
-            Descrição
-            <input
-              value={descricao}
-              onChange={(e) => setDescricao(e.target.value)}
-              placeholder="Mercado, uber, geladeira 10x…"
-            />
-          </label>
-          {/* transferência não tem categoria: não é gasto nem receita */}
-          {modo !== 'TRANSFERENCIA' && (
-            <label>
-              Categoria
-              <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)}>
-                <option value="">— sem categoria —</option>
-                {categorias
-                  .filter((c) =>
-                    modo === 'PARCELAMENTO'
-                      ? c.tipo === 'DESPESA'
-                      : c.tipo === (tipo === 'ENTRADA' ? 'RECEITA' : 'DESPESA'),
-                  )
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>{c.nome}</option>
+        {vista.tela === 'CATEGORIAS' && (
+          <>
+            <header className="cabecalho">
+              <div><h2>Categorias</h2></div>
+            </header>
+            <section className="bloco">
+              <form className="cat-form" onSubmit={criarCategoria}>
+                <input value={novaCatNome} onChange={(e) => setNovaCatNome(e.target.value)}
+                       placeholder="Alimentação, Transporte…" />
+                <select value={novaCatTipo} onChange={(e) => setNovaCatTipo(e.target.value)}>
+                  <option value="DESPESA">Despesa</option>
+                  <option value="RECEITA">Receita</option>
+                </select>
+                <div className="cores">
+                  {CORES.map((cor) => (
+                    <button key={cor} type="button" style={{ background: cor }}
+                            className={novaCatCor === cor ? 'cor ativa' : 'cor'}
+                            onClick={() => setNovaCatCor(cor)} title={cor} />
                   ))}
-              </select>
-            </label>
-          )}
-        </div>
+                </div>
+                <button type="submit" className="btn-ok">Criar</button>
+              </form>
+              {catMsg && <p className="msg">{catMsg}</p>}
 
-        <button type="submit" disabled={enviando}>
-          {enviando ? 'Lançando…' : modo === 'TRANSFERENCIA' ? 'Transferir' : 'Lançar'}
-        </button>
+              <ul className="cat-lista">
+                {categorias.map((c) => (
+                  <li key={c.id}>
+                    <i className="ponto" style={{ background: c.cor ?? 'var(--text-faint)' }} />
+                    {c.nome}
+                    <em className="badge">{c.tipo === 'RECEITA' ? 'receita' : 'despesa'}</em>
+                    <button className="btn-icone" onClick={() => excluirCategoria(c)} title="Excluir">🗑️</button>
+                  </li>
+                ))}
+                {categorias.length === 0 && <li className="vazio">Nenhuma categoria ainda.</li>}
+              </ul>
+            </section>
+          </>
+        )}
 
-        {msgForm && <p className="msg">{msgForm}</p>}
-      </form>
-    </main>
+        {/* nova conta (abre pelo + da sidebar, em qualquer tela) */}
+        {novaContaAberta && (
+          <form className="bloco form" onSubmit={criarConta}>
+            <h2>Nova conta</h2>
+            <div className="linha">
+              <label>Nome
+                <input value={ncNome} onChange={(e) => setNcNome(e.target.value)} placeholder="Nubank, Carteira…" />
+              </label>
+              <label>Tipo
+                <select value={ncTipo} onChange={(e) => setNcTipo(e.target.value)}>
+                  <option value="CORRENTE">Conta corrente</option>
+                  <option value="POUPANCA">Poupança</option>
+                  <option value="CARTEIRA">Carteira</option>
+                  <option value="CARTAO_CREDITO">Cartão de crédito</option>
+                </select>
+              </label>
+            </div>
+            <div className="linha">
+              <label>Saldo inicial (R$)
+                <input inputMode="decimal" placeholder="0,00" value={ncSaldo} onChange={(e) => setNcSaldo(e.target.value)} />
+              </label>
+              {ncTipo === 'CARTAO_CREDITO' && (
+                <label>Limite (R$)
+                  <input inputMode="decimal" placeholder="0,00" value={ncLimite} onChange={(e) => setNcLimite(e.target.value)} />
+                </label>
+              )}
+            </div>
+            {ncTipo === 'CARTAO_CREDITO' && (
+              <div className="linha">
+                <label>Dia de fechamento
+                  <input type="number" min={1} max={31} value={ncFechamento} onChange={(e) => setNcFechamento(e.target.value)} />
+                </label>
+                <label>Dia de vencimento
+                  <input type="number" min={1} max={31} value={ncVencimento} onChange={(e) => setNcVencimento(e.target.value)} />
+                </label>
+              </div>
+            )}
+            <button type="submit">Criar conta</button>
+            {ncMsg && <p className="msg">{ncMsg}</p>}
+          </form>
+        )}
+      </main>
+
+      {modalAberto && (
+        <ModalLancamento
+          contas={contas}
+          categorias={categorias}
+          contaPadrao={vista.tela === 'CONTA' ? vista.id : undefined}
+          aoFechar={() => setModalAberto(false)}
+          aoLancar={recarregar}
+          aoDeslogar={aoSair}
+        />
+      )}
+    </div>
   );
 }

@@ -11,8 +11,8 @@ import java.util.UUID;
 
 public interface TransacaoRepository extends JpaRepository<Transacao, UUID> {
 
-    // todas as transações do usuário (não apagadas)
-    List<Transacao> findByUserIdAndDeletedAtIsNull(UUID userId);
+    // todas as transações do usuário (não apagadas), mais recentes primeiro
+    List<Transacao> findByUserIdAndDeletedAtIsNullOrderByDataDescCreatedAtDesc(UUID userId);
 
     // extrato de uma conta DO USUÁRIO, mais recente primeiro.
     // O userId na query faz conta alheia devolver lista vazia — sem vazar nada.

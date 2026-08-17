@@ -1,10 +1,12 @@
 import { useState, type FormEvent } from 'react';
 import { api, salvarSessao } from './api';
+import { useTema } from './useTema';
 import './App.css';
 
 type TokenResponse = { token: string; expiraEm: string; nome: string };
 
 export default function Login({ aoEntrar }: { aoEntrar: () => void }) {
+  useTema(); // aplica o tema salvo/do sistema já na tela de entrada
   const [modo, setModo] = useState<'LOGIN' | 'REGISTRO'>('LOGIN');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -33,7 +35,10 @@ export default function Login({ aoEntrar }: { aoEntrar: () => void }) {
 
   return (
     <main className="app login-tela">
-      <h1>Fluxa</h1>
+      <div className="marca">
+        <div className="logo">K</div>
+      </div>
+      <h1>Kofre</h1>
       <p className="subtitulo">
         {modo === 'LOGIN' ? 'Entre na sua conta' : 'Crie sua conta'}
       </p>
@@ -77,6 +82,8 @@ export default function Login({ aoEntrar }: { aoEntrar: () => void }) {
       >
         {modo === 'LOGIN' ? 'Não tem conta? Criar conta' : 'Já tem conta? Entrar'}
       </button>
+
+      <p className="rodape">um produto Fluxa Labs</p>
     </main>
   );
 }

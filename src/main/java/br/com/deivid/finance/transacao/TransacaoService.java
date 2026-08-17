@@ -35,9 +35,9 @@ public class TransacaoService {
         this.contaRepository = contaRepository;
     }
 
-    /** Transações do usuário logado (não mais findAll — cada um vê só o seu). */
+    /** Transações do usuário logado, mais recentes primeiro. */
     public List<Transacao> listarTodas(UUID userId) {
-        return repository.findByUserIdAndDeletedAtIsNull(userId);
+        return repository.findByUserIdAndDeletedAtIsNullOrderByDataDescCreatedAtDesc(userId);
     }
 
     /** Extrato de uma conta — todos os lançamentos, do mais recente pro mais antigo. */
