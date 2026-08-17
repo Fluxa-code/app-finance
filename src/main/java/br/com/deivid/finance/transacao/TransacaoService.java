@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -241,5 +242,80 @@ public class TransacaoService {
         List<Transacao> salvas = repository.saveAll(parcelas);
         eventos.publicar("parcelamento");
         return salvas;
+    }
+
+    /**
+     * Corrige um lançamento (valor, data, descrição, conta, categoria).
+     *
+     * Transferência e parcela NÃO são editáveis aqui: elas fazem parte de
+     * um conjunto (2 linhas irmãs / N parcelas). Editar uma sozinha
+     * quebraria a coerência do grupo — o certo é excluir e refazer.
+     */
+    @Transactional
+    public Transacao atualizar(UUID id, AtualizarTransacaoRequest req, UUID userId) {
+
+        Transacao t = buscarDoUsuario(id, userId);
+
+        if (t.getTransferId() != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Transferência não pode ser editada. Exclua e lance de novo.");
+        }
+        if (t.getParcelamentoId() != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Parcela não pode ser editada. Exclua o parcelamento e lance de novo.");
+        }
+
+        garantirDono(req.accountId(), userId);
+
+        t.setAccountId(req.accountId());
+        t.setCategoryId(req.categoryId());
+        t.setValorCents(t.getTipo() == TipoTransacao.ENTRADA
+                ? req.valorCents()
+                : -req.valorCents());
+        t.setDescricao(req.descricao());
+        t.setData(req.data());
+
+        // a conta ou a data podem ter mudado -> a fatura pode ser outra
+        t.setInvoiceId(faturaService.resolverFatura(req.accountId(), req.data()));
+
+        Transacao salva = repository.save(t);
+        eventos.publicar("transacao");
+        return salva;
+    }
+
+    /**
+     * Exclui um lançamento — SOFT DELETE (marca deletedAt, não apaga a linha).
+     *
+     * Se for parte de um grupo, o grupo INTEIRO sai junto:
+     *  - transferência: as 2 linhas irmãs
+     *  - parcelamento: as N parcelas
+     * Apagar só um lado deixaria dinheiro aparecendo do nada.
+     */
+    @Transactional
+    public void excluir(UUID id, UUID userId) {
+        Transacao t = buscarDoUsuario(id, userId);
+
+        List<Transacao> aExcluir;
+        if (t.getTransferId() != null) {
+            aExcluir = repository.findByTransferIdAndDeletedAtIsNull(t.getTransferId());
+        } else if (t.getParcelamentoId() != null) {
+            aExcluir = repository.findByParcelamentoIdAndDeletedAtIsNull(t.getParcelamentoId());
+        } else {
+            aExcluir = List.of(t);
+        }
+
+        OffsetDateTime agora = OffsetDateTime.now();
+        aExcluir.forEach(x -> x.setDeletedAt(agora));
+        repository.saveAll(aExcluir);
+
+        eventos.publicar("transacao");
+    }
+
+    private Transacao buscarDoUsuario(UUID id, UUID userId) {
+        return repository.findById(id)
+                .filter(t -> t.getUserId().equals(userId))
+                .filter(t -> t.getDeletedAt() == null)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Lançamento não encontrado"));
     }
 }

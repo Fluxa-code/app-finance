@@ -311,3 +311,270 @@
 .form-conta {
   margin-top: 1.25rem;
 }
+
+/* acoes do extrato (editar/excluir) */
+.acoes {
+  display: flex;
+  gap: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.extrato li:hover .acoes {
+  opacity: 1;
+}
+
+.btn-icone {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 0.2rem 0.35rem;
+  border-radius: 6px;
+  line-height: 1;
+}
+
+.btn-icone:hover {
+  background: rgba(128, 128, 128, 0.18);
+}
+
+/* edicao inline */
+.extrato li.editando {
+  background: rgba(59, 130, 246, 0.07);
+}
+
+.form-edicao {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.form-edicao input {
+  padding: 0.4rem 0.5rem;
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font-size: 0.9rem;
+}
+
+.form-edicao input:not(.input-valor) {
+  flex: 1;
+  min-width: 8rem;
+}
+
+.form-edicao .input-valor {
+  width: 6.5rem;
+  text-align: right;
+}
+
+.btn-ok,
+.btn-cancel {
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.btn-ok {
+  background: #3b82f6;
+  color: white;
+  border: none;
+}
+
+.btn-cancel {
+  background: transparent;
+  color: inherit;
+  border-color: rgba(128, 128, 128, 0.4);
+}
+
+.msg-inline {
+  font-size: 0.8rem;
+  color: #e5484d;
+  width: 100%;
+}
+
+/* ---------- relatorio de categorias ---------- */
+.relatorio {
+  margin-top: 2.5rem;
+  padding: 1.5rem;
+  border: 1px solid rgba(128, 128, 128, 0.25);
+  border-radius: 14px;
+}
+
+.rel-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.rel-topo h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.rel-filtro {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.rel-filtro select {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font-size: 0.85rem;
+}
+
+.btn-link {
+  border: none;
+  background: none;
+  color: #3b82f6;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.rel-total {
+  margin: 1rem 0 0.75rem;
+  font-size: 0.95rem;
+  opacity: 0.85;
+}
+
+.barras {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.barra-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 0.3rem;
+  font-size: 0.9rem;
+}
+
+.barra-nome {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.ponto {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.qtd {
+  font-style: normal;
+  font-size: 0.75rem;
+  opacity: 0.5;
+}
+
+.barra-valor {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.barra-valor em {
+  font-style: normal;
+  opacity: 0.5;
+  font-size: 0.8rem;
+  margin-left: 0.35rem;
+}
+
+.barra-trilho {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(128, 128, 128, 0.15);
+  overflow: hidden;
+}
+
+.barra-preenche {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s;
+}
+
+/* gerenciar categorias */
+.cat-gerenciar {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(128, 128, 128, 0.2);
+}
+
+.cat-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.cat-form input,
+.cat-form select {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font-size: 0.9rem;
+}
+
+.cat-form input {
+  flex: 1;
+  min-width: 10rem;
+}
+
+.cores {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.cor {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.cor.ativa {
+  border-color: currentColor;
+  transform: scale(1.15);
+}
+
+.cat-lista {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.cat-lista li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.cat-lista .btn-icone {
+  margin-left: auto;
+}

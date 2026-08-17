@@ -6,15 +6,32 @@ type Conta = { id: string; nome: string; tipo: string };
 type Saldo = { contaId: string; nome: string; saldoCents: number };
 type Transacao = {
   id: string;
+  accountId: string;
+  categoryId: string | null;
   descricao: string | null;
   valorCents: number;
   data: string;
   tipo: string;
   parcelaNum: number | null;
   parcelaTotal: number | null;
+  transferId: string | null;
+  parcelamentoId: string | null;
+};
+
+type Categoria = { id: string; nome: string; tipo: string; cor: string | null };
+type GastoCategoria = {
+  categoriaId: string | null;
+  nome: string | null;
+  cor: string | null;
+  totalCents: number;
+  quantidade: number;
 };
 
 type Modo = 'SIMPLES' | 'TRANSFERENCIA' | 'PARCELAMENTO';
+
+const CORES = ['#3b82f6', '#e5484d', '#30a46c', '#f5a524', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+
+const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
 const TIPO_LABEL: Record<string, string> = {
   CORRENTE: 'Conta corrente',
@@ -41,6 +58,19 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
   const [contaSel, setContaSel] = useState<string | null>(null);
   const [extrato, setExtrato] = useState<Transacao[]>([]);
 
+  // categorias + relatório
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [relatorio, setRelatorio] = useState<GastoCategoria[]>([]);
+  const hoje = new Date();
+  const [relAno, setRelAno] = useState(hoje.getFullYear());
+  const [relMes, setRelMes] = useState(hoje.getMonth() + 1);
+  const [mostrarCategorias, setMostrarCategorias] = useState(false);
+  const [novaCatNome, setNovaCatNome] = useState('');
+  const [novaCatTipo, setNovaCatTipo] = useState('DESPESA');
+  const [novaCatCor, setNovaCatCor] = useState(CORES[0]);
+  const [catMsg, setCatMsg] = useState<string | null>(null);
+  const [categoriaId, setCategoriaId] = useState('');
+
   const [modo, setModo] = useState<Modo>('SIMPLES');
   const [tipo, setTipo] = useState<'SAIDA' | 'ENTRADA'>('SAIDA');
   const [contaId, setContaId] = useState('');
@@ -51,6 +81,13 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
   const [data, setData] = useState(() => new Date().toISOString().slice(0, 10));
   const [enviando, setEnviando] = useState(false);
   const [msgForm, setMsgForm] = useState<string | null>(null);
+
+  // edição de lançamento (null = ninguém sendo editado)
+  const [editando, setEditando] = useState<Transacao | null>(null);
+  const [edValor, setEdValor] = useState('');
+  const [edDescricao, setEdDescricao] = useState('');
+  const [edData, setEdData] = useState('');
+  const [edMsg, setEdMsg] = useState<string | null>(null);
 
   // formulário de NOVA CONTA
   const [mostrarNovaConta, setMostrarNovaConta] = useState(false);
@@ -84,6 +121,7 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
           contasResp.map((c) => api.get<Saldo>(`/contas/${c.id}/saldo`)),
         );
         setSaldos(saldosResp);
+        setCategorias(await api.get<Categoria[]>('/categorias'));
         setErro(null);
       } catch (err) {
         if (!tratarFalha(err)) {
@@ -109,6 +147,16 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
       });
   }, [contaSel, tick]);
 
+  // relatório do mês escolhido — recarrega ao trocar mês/ano ou ao mudar algo
+  useEffect(() => {
+    api
+      .get<GastoCategoria[]>(`/categorias/relatorio?ano=${relAno}&mes=${relMes}`)
+      .then(setRelatorio)
+      .catch((err) => {
+        if (!tratarFalha(err)) setRelatorio([]);
+      });
+  }, [relAno, relMes, tick]);
+
   // tempo real (SSE) — endpoint aberto, só avisa "algo mudou"
   useEffect(() => {
     const es = new EventSource(`${API_URL}/eventos`);
@@ -131,7 +179,15 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
     let body: Record<string, unknown>;
 
     if (modo === 'SIMPLES') {
-      body = { id: crypto.randomUUID(), accountId: contaId, tipo, valorCents, descricao, data };
+      body = {
+        id: crypto.randomUUID(),
+        accountId: contaId,
+        categoryId: categoriaId || undefined,   // vazio = sem categoria
+        tipo,
+        valorCents,
+        descricao,
+        data,
+      };
     } else if (modo === 'TRANSFERENCIA') {
       if (contaId === contaDestino) {
         setMsgForm('Origem e destino não podem ser a mesma conta.');
@@ -158,6 +214,7 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
       body = {
         id: crypto.randomUUID(),
         accountId: contaId,
+        categoryId: categoriaId || undefined,
         descricao,
         valorTotalCents: valorCents,
         parcelaTotal: n,
@@ -178,6 +235,95 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
       }
     } finally {
       setEnviando(false);
+    }
+  }
+
+  async function criarCategoria(e: FormEvent) {
+    e.preventDefault();
+    setCatMsg(null);
+    if (!novaCatNome.trim()) {
+      setCatMsg('Dá um nome pra categoria.');
+      return;
+    }
+    try {
+      await api.post('/categorias', {
+        id: crypto.randomUUID(),
+        nome: novaCatNome.trim(),
+        tipo: novaCatTipo,
+        cor: novaCatCor,
+      });
+      setNovaCatNome('');
+      setTick((t) => t + 1);
+    } catch (err) {
+      if (!tratarFalha(err)) {
+        setCatMsg(err instanceof Error ? err.message : 'Erro ao criar.');
+      }
+    }
+  }
+
+  async function excluirCategoria(c: Categoria) {
+    if (!confirm(`Excluir a categoria "${c.nome}"? Os lançamentos dela viram "Sem categoria".`)) return;
+    try {
+      await api.del(`/categorias/${c.id}`);
+      setTick((t) => t + 1);
+    } catch (err) {
+      if (!tratarFalha(err)) alert(err instanceof Error ? err.message : 'Erro ao excluir.');
+    }
+  }
+
+  function abrirEdicao(t: Transacao) {
+    setEditando(t);
+    setEdValor((Math.abs(t.valorCents) / 100).toFixed(2).replace('.', ','));
+    setEdDescricao(t.descricao ?? '');
+    setEdData(t.data);
+    setEdMsg(null);
+  }
+
+  async function salvarEdicao(e: FormEvent) {
+    e.preventDefault();
+    if (!editando) return;
+    setEdMsg(null);
+
+    const valorReais = Number(edValor.replace(',', '.'));
+    if (!valorReais || valorReais <= 0) {
+      setEdMsg('Informe um valor maior que zero.');
+      return;
+    }
+
+    try {
+      await api.put(`/transacoes/${editando.id}`, {
+        accountId: editando.accountId,
+        categoryId: editando.categoryId,
+        valorCents: Math.round(valorReais * 100),
+        descricao: edDescricao,
+        data: edData,
+      });
+      setEditando(null);
+      setTick((t) => t + 1);
+    } catch (err) {
+      if (!tratarFalha(err)) {
+        setEdMsg(err instanceof Error ? err.message : 'Erro ao salvar.');
+      }
+    }
+  }
+
+  async function excluir(t: Transacao) {
+    // grupo? avisa que vai tudo junto
+    const aviso = t.transferId
+      ? 'Excluir esta transferência? Os dois lados serão removidos.'
+      : t.parcelamentoId
+        ? `Excluir esta compra parcelada? TODAS as ${t.parcelaTotal} parcelas serão removidas.`
+        : `Excluir "${t.descricao || 'este lançamento'}"?`;
+
+    if (!confirm(aviso)) return;
+
+    try {
+      await api.del(`/transacoes/${t.id}`);
+      setTick((x) => x + 1);
+    } catch (err) {
+      if (!tratarFalha(err)) {
+        alert(err instanceof Error ? err.message : 'Erro ao excluir.');
+      }
     }
   }
 
@@ -240,6 +386,7 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
 
   const total = saldos.reduce((soma, s) => soma + s.saldoCents, 0);
   const contaSelNome = saldos.find((s) => s.contaId === contaSel)?.nome;
+  const totalGasto = relatorio.reduce((soma, g) => soma + g.totalCents, 0);
 
   return (
     <main className="app">
@@ -376,6 +523,107 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
         Patrimônio total: <strong>{formatBRL(total)}</strong>
       </footer>
 
+      {/* ---------- RELATÓRIO: pra onde foi o dinheiro ---------- */}
+      <section className="relatorio">
+        <div className="rel-topo">
+          <h2>Gastos por categoria</h2>
+          <div className="rel-filtro">
+            <select value={relMes} onChange={(e) => setRelMes(Number(e.target.value))}>
+              {MESES.map((m, i) => (
+                <option key={m} value={i + 1}>{m}</option>
+              ))}
+            </select>
+            <select value={relAno} onChange={(e) => setRelAno(Number(e.target.value))}>
+              {[relAno - 1, relAno, relAno + 1].map((a) => (
+                <option key={a} value={a}>{a}</option>
+              ))}
+            </select>
+            <button type="button" className="btn-link" onClick={() => setMostrarCategorias((v) => !v)}>
+              {mostrarCategorias ? 'fechar' : 'gerenciar categorias'}
+            </button>
+          </div>
+        </div>
+
+        {relatorio.length === 0 ? (
+          <p className="vazio">Nenhum gasto neste mês.</p>
+        ) : (
+          <>
+            <p className="rel-total">
+              Total gasto: <strong>{formatBRL(totalGasto)}</strong>
+            </p>
+            <ul className="barras">
+              {relatorio.map((g) => {
+                const pct = totalGasto > 0 ? (g.totalCents / totalGasto) * 100 : 0;
+                return (
+                  <li key={g.categoriaId ?? 'sem'}>
+                    <div className="barra-topo">
+                      <span className="barra-nome">
+                        <i className="ponto" style={{ background: g.cor ?? '#94a3b8' }} />
+                        {g.nome ?? 'Sem categoria'}
+                        <em className="qtd">{g.quantidade}x</em>
+                      </span>
+                      <span className="barra-valor">
+                        {formatBRL(g.totalCents)} <em>{pct.toFixed(0)}%</em>
+                      </span>
+                    </div>
+                    <div className="barra-trilho">
+                      <div
+                        className="barra-preenche"
+                        style={{ width: `${pct}%`, background: g.cor ?? '#94a3b8' }}
+                      />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
+
+        {mostrarCategorias && (
+          <div className="cat-gerenciar">
+            <form className="cat-form" onSubmit={criarCategoria}>
+              <input
+                value={novaCatNome}
+                onChange={(e) => setNovaCatNome(e.target.value)}
+                placeholder="Alimentação, Transporte…"
+              />
+              <select value={novaCatTipo} onChange={(e) => setNovaCatTipo(e.target.value)}>
+                <option value="DESPESA">Despesa</option>
+                <option value="RECEITA">Receita</option>
+              </select>
+              <div className="cores">
+                {CORES.map((cor) => (
+                  <button
+                    key={cor}
+                    type="button"
+                    className={novaCatCor === cor ? 'cor ativa' : 'cor'}
+                    style={{ background: cor }}
+                    onClick={() => setNovaCatCor(cor)}
+                    title={cor}
+                  />
+                ))}
+              </div>
+              <button type="submit" className="btn-ok">Criar</button>
+            </form>
+            {catMsg && <p className="msg">{catMsg}</p>}
+
+            <ul className="cat-lista">
+              {categorias.map((c) => (
+                <li key={c.id}>
+                  <i className="ponto" style={{ background: c.cor ?? '#94a3b8' }} />
+                  {c.nome}
+                  <em className="badge">{c.tipo === 'RECEITA' ? 'receita' : 'despesa'}</em>
+                  <button className="btn-icone" onClick={() => excluirCategoria(c)} title="Excluir">
+                    🗑️
+                  </button>
+                </li>
+              ))}
+              {categorias.length === 0 && <li className="vazio">Nenhuma categoria ainda.</li>}
+            </ul>
+          </div>
+        )}
+      </section>
+
       {contaSel && (
         <section className="extrato">
           <h2>Extrato — {contaSelNome}</h2>
@@ -383,23 +631,65 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
             <p className="vazio">Nenhum lançamento nesta conta.</p>
           ) : (
             <ul>
-              {extrato.map((t) => (
-                <li key={t.id}>
-                  <span className="ext-data">{formatData(t.data)}</span>
-                  <span className="ext-desc">
-                    {t.descricao || '(sem descrição)'}
-                    {t.parcelaNum != null && (
-                      <em className="badge">
-                        {t.parcelaNum}/{t.parcelaTotal}
-                      </em>
-                    )}
-                    {t.tipo === 'TRANSFERENCIA' && <em className="badge transf">transferência</em>}
-                  </span>
-                  <span className={t.valorCents < 0 ? 'ext-valor negativo' : 'ext-valor positivo'}>
-                    {formatBRL(t.valorCents)}
-                  </span>
-                </li>
-              ))}
+              {extrato.map((t) =>
+                editando?.id === t.id ? (
+                  // ---- modo edição ----
+                  <li key={t.id} className="editando">
+                    <form className="form-edicao" onSubmit={salvarEdicao}>
+                      <input
+                        type="date"
+                        value={edData}
+                        onChange={(e) => setEdData(e.target.value)}
+                      />
+                      <input
+                        value={edDescricao}
+                        onChange={(e) => setEdDescricao(e.target.value)}
+                        placeholder="Descrição"
+                      />
+                      <input
+                        inputMode="decimal"
+                        value={edValor}
+                        onChange={(e) => setEdValor(e.target.value)}
+                        placeholder="0,00"
+                        className="input-valor"
+                      />
+                      <button type="submit" className="btn-ok">Salvar</button>
+                      <button type="button" className="btn-cancel" onClick={() => setEditando(null)}>
+                        Cancelar
+                      </button>
+                      {edMsg && <span className="msg-inline">{edMsg}</span>}
+                    </form>
+                  </li>
+                ) : (
+                  // ---- modo leitura ----
+                  <li key={t.id}>
+                    <span className="ext-data">{formatData(t.data)}</span>
+                    <span className="ext-desc">
+                      {t.descricao || '(sem descrição)'}
+                      {t.parcelaNum != null && (
+                        <em className="badge">
+                          {t.parcelaNum}/{t.parcelaTotal}
+                        </em>
+                      )}
+                      {t.tipo === 'TRANSFERENCIA' && <em className="badge transf">transferência</em>}
+                    </span>
+                    <span className={t.valorCents < 0 ? 'ext-valor negativo' : 'ext-valor positivo'}>
+                      {formatBRL(t.valorCents)}
+                    </span>
+                    <span className="acoes">
+                      {/* transferência e parcela não são editáveis: fazem parte de um grupo */}
+                      {!t.transferId && !t.parcelamentoId && (
+                        <button className="btn-icone" title="Editar" onClick={() => abrirEdicao(t)}>
+                          ✏️
+                        </button>
+                      )}
+                      <button className="btn-icone" title="Excluir" onClick={() => excluir(t)}>
+                        🗑️
+                      </button>
+                    </span>
+                  </li>
+                ),
+              )}
             </ul>
           )}
         </section>
@@ -527,14 +817,34 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
           </label>
         </div>
 
-        <label>
-          Descrição
-          <input
-            value={descricao}
-            onChange={(e) => setDescricao(e.target.value)}
-            placeholder="Mercado, uber, geladeira 10x…"
-          />
-        </label>
+        <div className="linha">
+          <label>
+            Descrição
+            <input
+              value={descricao}
+              onChange={(e) => setDescricao(e.target.value)}
+              placeholder="Mercado, uber, geladeira 10x…"
+            />
+          </label>
+          {/* transferência não tem categoria: não é gasto nem receita */}
+          {modo !== 'TRANSFERENCIA' && (
+            <label>
+              Categoria
+              <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)}>
+                <option value="">— sem categoria —</option>
+                {categorias
+                  .filter((c) =>
+                    modo === 'PARCELAMENTO'
+                      ? c.tipo === 'DESPESA'
+                      : c.tipo === (tipo === 'ENTRADA' ? 'RECEITA' : 'DESPESA'),
+                  )
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>{c.nome}</option>
+                  ))}
+              </select>
+            </label>
+          )}
+        </div>
 
         <button type="submit" disabled={enviando}>
           {enviando ? 'Lançando…' : modo === 'TRANSFERENCIA' ? 'Transferir' : 'Lançar'}

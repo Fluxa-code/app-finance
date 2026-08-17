@@ -60,6 +60,20 @@ public class TransacaoController {
         return service.parcelar(req, userId(jwt));
     }
 
+    @PutMapping("/{id}")
+    public Transacao atualizar(@AuthenticationPrincipal Jwt jwt,
+                               @PathVariable UUID id,
+                               @Valid @RequestBody AtualizarTransacaoRequest req) {
+        return service.atualizar(id, req, userId(jwt));
+    }
+
+    // 204 No Content: deu certo e não há corpo pra devolver
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void excluir(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        service.excluir(id, userId(jwt));
+    }
+
     private UUID userId(Jwt jwt) {
         return UUID.fromString(jwt.getSubject());
     }

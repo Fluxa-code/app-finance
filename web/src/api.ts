@@ -76,4 +76,16 @@ export const api = {
     if (!resp.ok) throw new Error(await mensagemDeErro(resp));
     return resp.json();
   },
+
+  async put<T>(caminho: string, body: unknown): Promise<T> {
+    const resp = await request(caminho, { method: 'PUT', body: JSON.stringify(body) });
+    if (!resp.ok) throw new Error(await mensagemDeErro(resp));
+    return resp.json();
+  },
+
+  // DELETE responde 204 sem corpo — não tenta ler JSON
+  async del(caminho: string): Promise<void> {
+    const resp = await request(caminho, { method: 'DELETE' });
+    if (!resp.ok) throw new Error(await mensagemDeErro(resp));
+  },
 };
