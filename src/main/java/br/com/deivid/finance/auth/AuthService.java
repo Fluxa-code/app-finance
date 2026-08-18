@@ -1,8 +1,10 @@
 package br.com.deivid.finance.auth;
 
+import br.com.deivid.finance.categoria.CategoriaService;
 import br.com.deivid.finance.usuario.Usuario;
 import br.com.deivid.finance.usuario.UsuarioRepository;
 import org.springframework.http.HttpStatus;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
@@ -22,15 +24,21 @@ public class AuthService {
     private final UsuarioRepository usuarios;
     private final PasswordEncoder encoder;
     private final JwtEncoder jwtEncoder;
+    private final CategoriaService categorias;
 
     public AuthService(UsuarioRepository usuarios,
                        PasswordEncoder encoder,
-                       JwtEncoder jwtEncoder) {
+                       JwtEncoder jwtEncoder,
+                       CategoriaService categorias) {
         this.usuarios = usuarios;
         this.encoder = encoder;
         this.jwtEncoder = jwtEncoder;
+        this.categorias = categorias;
     }
 
+    // @Transactional: usuário + categorias nascem juntos ou nada nasce.
+    // Sem isso, um erro no meio deixaria usuário sem as categorias iniciais.
+    @Transactional
     public TokenResponse registrar(RegistroRequest req) {
         String email = req.email().toLowerCase().trim();
 
@@ -45,6 +53,9 @@ public class AuthService {
         u.setSenhaHash(encoder.encode(req.senha()));   // BCrypt: hash irreversível + salt
         u.setNome(req.nome());
         usuarios.save(u);
+
+        // kit inicial: o app já nasce usável, sem a pessoa ter que configurar nada
+        categorias.criarPadrao(u.getId());
 
         return gerarToken(u);
     }

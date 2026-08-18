@@ -47,6 +47,9 @@ public class Transacao {
     // em qual fatura essa compra de cartão caiu
     private UUID invoiceId;
 
+    // se foi gerada por uma recorrência, qual
+    private UUID recurringRuleId;
+
     @CreationTimestamp
     private OffsetDateTime createdAt;
 

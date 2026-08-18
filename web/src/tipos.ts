@@ -44,6 +44,19 @@ export function descreverRecorrencia(r: Recorrencia): string {
   return `todo dia ${r.dia}`;
 }
 
+export type Fatura = {
+  id: string;
+  cardId: string;
+  cartaoNome: string;
+  ano: number;
+  mes: number;
+  dataFechamento: string;
+  dataVencimento: string;
+  status: 'ABERTA' | 'FECHADA' | 'PAGA';
+  totalCents: number;
+  quantidade: number;
+};
+
 export type GastoCategoria = {
   categoriaId: string | null;
   nome: string | null;

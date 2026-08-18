@@ -22,6 +22,44 @@ public class CategoriaService {
         this.transacaoRepository = transacaoRepository;
     }
 
+    /**
+     * Categorias que todo usuário novo ganha ao se cadastrar.
+     *
+     * Por quê: sem isso, a pessoa entra no app e não consegue categorizar nada
+     * até parar e criar categoria — atrito logo na primeira impressão. Estas
+     * cobrem a maioria dos gastos de um brasileiro; ela edita/apaga à vontade.
+     */
+    private static final List<String[]> PADRAO = List.of(
+            // nome, tipo, cor
+            new String[]{"Alimentação",  "DESPESA", "#e5484d"},
+            new String[]{"Transporte",   "DESPESA", "#3b82f6"},
+            new String[]{"Moradia",      "DESPESA", "#8b5cf6"},
+            new String[]{"Saúde",        "DESPESA", "#06b6d4"},
+            new String[]{"Lazer",        "DESPESA", "#ec4899"},
+            new String[]{"Educação",     "DESPESA", "#f5a524"},
+            new String[]{"Compras",      "DESPESA", "#84cc16"},
+            new String[]{"Assinaturas",  "DESPESA", "#6366f1"},
+            new String[]{"Outros",       "DESPESA", "#94a3b8"},
+            new String[]{"Salário",      "RECEITA", "#30a46c"},
+            new String[]{"Freelance",    "RECEITA", "#22c55e"},
+            new String[]{"Investimentos","RECEITA", "#14b8a6"}
+    );
+
+    /** Chamado no registro — cria o kit inicial de categorias do usuário. */
+    public void criarPadrao(UUID userId) {
+        List<Categoria> novas = PADRAO.stream().map(def -> {
+            Categoria c = new Categoria();
+            c.setId(UUID.randomUUID());
+            c.setUserId(userId);
+            c.setNome(def[0]);
+            c.setTipo(TipoCategoria.valueOf(def[1]));
+            c.setCor(def[2]);
+            return c;
+        }).toList();
+
+        repository.saveAll(novas);
+    }
+
     public List<Categoria> listar(UUID userId) {
         return repository.findByUserIdAndDeletedAtIsNullOrderByNome(userId);
     }

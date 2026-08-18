@@ -1,9 +1,11 @@
 import { BarrasComparativo, Donut, LinhaEvolucao } from './Graficos';
 import {
   formatBRL,
+  formatData,
   formatDataCurta,
   MESES,
   type Categoria,
+  type Fatura,
   type GastoCategoria,
   type Saldo,
   type Transacao,
@@ -15,6 +17,7 @@ type Props = {
   recentes: Transacao[];
   relatorio: GastoCategoria[];
   categorias: Categoria[];
+  faturas: Fatura[];
   ano: number;
   mes: number;
   onTrocarMes: (ano: number, mes: number) => void;
@@ -27,11 +30,17 @@ export default function Dashboard({
   recentes,
   relatorio,
   categorias,
+  faturas,
   ano,
   mes,
   onTrocarMes,
   onVerConta,
 }: Props) {
+  // faturas em aberto (não pagas, com valor), da que vence primeiro
+  const faturasAbertas = faturas
+    .filter((f) => f.status !== 'PAGA' && f.totalCents > 0)
+    .sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento));
+  const totalFaturas = faturasAbertas.reduce((s, f) => s + f.totalCents, 0);
   const patrimonio = saldos.reduce((s, x) => s + x.saldoCents, 0);
 
   // KPIs do mês: transferência NÃO entra (dinheiro só trocou de bolso)
@@ -113,6 +122,31 @@ export default function Dashboard({
           </section>
         </div>
       </div>
+
+      {/* ---- faturas em aberto ---- */}
+      {faturasAbertas.length > 0 && (
+        <section className="bloco">
+          <div className="rel-topo">
+            <h2>Faturas em aberto</h2>
+            <span className="rel-total" style={{ margin: 0 }}>
+              Total: <strong>{formatBRL(totalFaturas)}</strong>
+            </span>
+          </div>
+          <ul className="faturas-resumo">
+            {faturasAbertas.slice(0, 4).map((f) => (
+              <li key={f.id} onClick={() => onVerConta(f.cardId)}>
+                <span className="fr-cartao">💳 {f.cartaoNome}</span>
+                <span className="fr-mes">{MESES[f.mes - 1].slice(0, 3)}/{f.ano}</span>
+                <em className={`badge status-${f.status.toLowerCase()}`}>
+                  {f.status === 'FECHADA' ? 'fechada' : 'aberta'}
+                </em>
+                <span className="fr-venc">vence {formatData(f.dataVencimento)}</span>
+                <strong className="fr-valor">{formatBRL(f.totalCents)}</strong>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* ---- últimos lançamentos ---- */}
       <section className="bloco">

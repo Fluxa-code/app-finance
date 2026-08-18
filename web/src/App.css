@@ -175,6 +175,178 @@
   color: var(--text-faint);
 }
 
+/* ---------- faturas ---------- */
+.faturas {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fatura {
+  border: 1px solid var(--border);
+  border-radius: var(--raio-sm);
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+
+.fatura.expandida {
+  border-color: var(--gold-border);
+}
+
+.fatura.paga {
+  opacity: 0.6;
+}
+
+.fatura-cabecalho {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.85rem 1rem;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.fatura-cabecalho:hover {
+  background: var(--surface-2);
+}
+
+.fatura-mes {
+  font-weight: 650;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 10rem;
+}
+
+.fatura-datas {
+  flex: 1;
+  font-size: 0.78rem;
+  color: var(--text-faint);
+}
+
+.fatura-total {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.05rem;
+}
+
+.fatura-seta {
+  color: var(--text-faint);
+  font-size: 0.8rem;
+}
+
+.fatura-corpo {
+  padding: 0.5rem 1rem 1rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.fatura-itens {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+}
+
+.fatura-itens li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.25rem;
+  font-size: 0.87rem;
+}
+
+.fatura-itens li + li {
+  border-top: 1px solid var(--border);
+}
+
+.status-aberta {
+  background: var(--gold-soft);
+  color: var(--gold);
+  border-color: var(--gold-border);
+}
+
+.status-fechada {
+  background: rgba(220, 38, 38, 0.1);
+  color: var(--negative);
+  border-color: rgba(220, 38, 38, 0.3);
+}
+
+.status-paga {
+  background: rgba(22, 163, 74, 0.1);
+  color: var(--positive);
+  border-color: rgba(22, 163, 74, 0.3);
+}
+
+.form-pagar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  align-items: end;
+  padding: 0.75rem 0 0.25rem;
+}
+
+.form-pagar-acoes {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.form-pagar .msg-inline,
+.form-pagar .dica {
+  grid-column: 1 / -1;
+}
+
+/* resumo de faturas no dashboard */
+.faturas-resumo {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+}
+
+.faturas-resumo li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.35rem;
+  border-radius: var(--raio-sm);
+  cursor: pointer;
+  font-size: 0.87rem;
+}
+
+.faturas-resumo li + li {
+  border-top: 1px solid var(--border);
+}
+
+.faturas-resumo li:hover {
+  background: var(--surface-2);
+}
+
+.fr-cartao {
+  font-weight: 600;
+  min-width: 8rem;
+}
+
+.fr-mes {
+  color: var(--text-muted);
+  min-width: 4.5rem;
+}
+
+.fr-venc {
+  flex: 1;
+  font-size: 0.78rem;
+  color: var(--text-faint);
+}
+
+.fr-valor {
+  font-variant-numeric: tabular-nums;
+}
+
 .opcional {
   font-weight: 400;
   opacity: 0.6;

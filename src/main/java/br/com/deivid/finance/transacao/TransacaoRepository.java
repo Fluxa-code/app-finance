@@ -28,6 +28,33 @@ public interface TransacaoRepository extends JpaRepository<Transacao, UUID> {
     // as N parcelas de uma compra (pra excluir juntas)
     List<Transacao> findByParcelamentoIdAndDeletedAtIsNull(UUID parcelamentoId);
 
+    // lançamentos gerados por uma recorrência (pra limpar o futuro ao excluir a regra)
+    List<Transacao> findByRecurringRuleIdAndDeletedAtIsNull(UUID recurringRuleId);
+
+    // itens de uma fatura (as compras do cartão naquele período)
+    List<Transacao> findByInvoiceIdAndDeletedAtIsNullOrderByDataDesc(UUID invoiceId);
+
+    // total da fatura = soma das compras nela. Só SAIDA: o pagamento da fatura
+    // (que é TRANSFERENCIA e entra positivo no cartão) NÃO reduz o "valor da fatura",
+    // ele reduz o SALDO do cartão. São perguntas diferentes.
+    @Query("""
+            SELECT COALESCE(-SUM(t.valorCents), 0)
+            FROM Transacao t
+            WHERE t.invoiceId = :invoiceId
+              AND t.deletedAt IS NULL
+              AND t.tipo = br.com.deivid.finance.transacao.TipoTransacao.SAIDA
+            """)
+    long somarFatura(@Param("invoiceId") UUID invoiceId);
+
+    @Query("""
+            SELECT COUNT(t)
+            FROM Transacao t
+            WHERE t.invoiceId = :invoiceId
+              AND t.deletedAt IS NULL
+              AND t.tipo = br.com.deivid.finance.transacao.TipoTransacao.SAIDA
+            """)
+    long contarFatura(@Param("invoiceId") UUID invoiceId);
+
     // soma dos lançamentos de uma conta. COALESCE devolve 0 quando não há nenhum
     // (senão SUM de zero linhas retorna null).
     @Query("""

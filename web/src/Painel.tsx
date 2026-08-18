@@ -2,10 +2,11 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { api, API_URL, getNome, limparSessao, NaoAutenticado } from './api';
 import { useTema } from './useTema';
 import Dashboard from './Dashboard';
+import Faturas from './Faturas';
 import ModalLancamento from './ModalLancamento';
 import {
   CORES, descreverRecorrencia, formatBRL, formatData, TIPO_ICONE, TIPO_LABEL,
-  type Categoria, type Conta, type GastoCategoria, type Recorrencia, type Saldo, type Transacao,
+  type Categoria, type Conta, type Fatura, type GastoCategoria, type Recorrencia, type Saldo, type Transacao,
 } from './tipos';
 import './App.css';
 
@@ -26,6 +27,7 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
   const [relatorio, setRelatorio] = useState<GastoCategoria[]>([]);
   const [extrato, setExtrato] = useState<Transacao[]>([]);
   const [recorrencias, setRecorrencias] = useState<Recorrencia[]>([]);
+  const [faturas, setFaturas] = useState<Fatura[]>([]);
 
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -82,6 +84,7 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
         setCategorias(await api.get<Categoria[]>('/categorias'));
         setRecentes(await api.get<Transacao[]>('/transacoes'));
         setRecorrencias(await api.get<Recorrencia[]>('/recorrencias'));
+        setFaturas(await api.get<Fatura[]>('/faturas'));
         setErro(null);
       } catch (err) {
         if (!tratarFalha(err)) setErro('Não consegui falar com a API. O backend está rodando?');
@@ -318,6 +321,7 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
             recentes={recentes}
             relatorio={relatorio}
             categorias={categorias}
+            faturas={faturas}
             ano={ano}
             mes={mes}
             onTrocarMes={(a, m) => { setAno(a); setMes(m); }}
@@ -337,8 +341,18 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
               </strong>
             </header>
 
+            {contaAberta.tipo === 'CARTAO_CREDITO' && (
+              <Faturas
+                cardId={contaAberta.id}
+                contas={contas}
+                tick={tick}
+                aoMudar={recarregar}
+                aoDeslogar={aoSair}
+              />
+            )}
+
             <section className="bloco extrato">
-              <h2>Extrato</h2>
+              <h2>{contaAberta.tipo === 'CARTAO_CREDITO' ? 'Todos os lançamentos' : 'Extrato'}</h2>
               {extrato.length === 0 ? (
                 <p className="vazio">Nenhum lançamento nesta conta.</p>
               ) : (
