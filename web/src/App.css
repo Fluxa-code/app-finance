@@ -461,6 +461,61 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  padding: 0.3rem 0.4rem;
+  border-radius: var(--raio-sm);
+}
+
+.usuario-nome:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.usuario-nome.ativo {
+  color: var(--gold);
+  background: var(--gold-soft);
+}
+
+/* ---------- zona de perigo ---------- */
+.bloco.perigo {
+  border-color: rgba(220, 38, 38, 0.35);
+}
+
+.perigo-texto {
+  margin: 0.75rem 0 1rem;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.btn-perigo {
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--negative);
+  border-radius: var(--raio-sm);
+  background: transparent;
+  color: var(--negative);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-perigo:hover:not(:disabled) {
+  background: var(--negative);
+  color: white;
+}
+
+.btn-perigo:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .marca-sub {

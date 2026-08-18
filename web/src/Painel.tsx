@@ -4,6 +4,7 @@ import { useTema } from './useTema';
 import Dashboard from './Dashboard';
 import Faturas from './Faturas';
 import ModalLancamento from './ModalLancamento';
+import PerfilTela from './Perfil';
 import {
   CORES, descreverRecorrencia, formatBRL, formatData, TIPO_ICONE, TIPO_LABEL,
   type Categoria, type Conta, type Fatura, type GastoCategoria, type Recorrencia, type Saldo, type Transacao,
@@ -14,7 +15,8 @@ type Vista =
   | { tela: 'INICIO' }
   | { tela: 'CONTA'; id: string }
   | { tela: 'CATEGORIAS' }
-  | { tela: 'RECORRENCIAS' };
+  | { tela: 'RECORRENCIAS' }
+  | { tela: 'PERFIL' };
 
 export default function Painel({ aoSair }: { aoSair: () => void }) {
   const { tema, alternar } = useTema();
@@ -299,7 +301,13 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
         </ul>
 
         <div className="sidebar-rodape">
-          <span className="usuario-nome">{getNome()}</span>
+          <button
+            className={vista.tela === 'PERFIL' ? 'usuario-nome ativo' : 'usuario-nome'}
+            onClick={() => { setVista({ tela: 'PERFIL' }); setMenuMobile(false); }}
+            title="Meu perfil"
+          >
+            {getNome()}
+          </button>
           <button className="btn-icone" onClick={alternar} title="Tema">
             {tema === 'dark' ? '☀' : '☾'}
           </button>
@@ -396,6 +404,8 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
             </section>
           </>
         )}
+
+        {vista.tela === 'PERFIL' && <PerfilTela aoSair={aoSair} />}
 
         {vista.tela === 'RECORRENCIAS' && (
           <>

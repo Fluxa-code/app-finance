@@ -92,9 +92,19 @@ export const api = {
     return resp.json();
   },
 
-  // DELETE responde 204 sem corpo — não tenta ler JSON
-  async del(caminho: string): Promise<void> {
-    const resp = await request(caminho, { method: 'DELETE' });
+  // DELETE responde 204 sem corpo — não tenta ler JSON.
+  // Aceita body opcional (excluir conta manda a senha).
+  async del(caminho: string, body?: unknown): Promise<void> {
+    const resp = await request(caminho, {
+      method: 'DELETE',
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    if (!resp.ok) throw new Error(await mensagemDeErro(resp));
+  },
+
+  // PUT que devolve 204 (trocar senha)
+  async putVazio(caminho: string, body: unknown): Promise<void> {
+    const resp = await request(caminho, { method: 'PUT', body: JSON.stringify(body) });
     if (!resp.ok) throw new Error(await mensagemDeErro(resp));
   },
 };
