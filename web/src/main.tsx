@@ -8,3 +8,9 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>,
 )
+
+// registra o service worker SÓ em produção:
+// em dev ele atrapalharia o hot reload servindo arquivos velhos do cache
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js')
+}
