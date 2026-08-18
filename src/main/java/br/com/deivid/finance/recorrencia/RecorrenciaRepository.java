@@ -11,4 +11,6 @@ public interface RecorrenciaRepository extends JpaRepository<Recorrencia, UUID> 
 
     // o que o gerador diário processa: todas as regras vivas, de todo mundo
     List<Recorrencia> findByAtivaTrueAndDeletedAtIsNull();
+
+    void deleteByUserId(UUID userId);
 }

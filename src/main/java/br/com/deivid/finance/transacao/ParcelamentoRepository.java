@@ -5,4 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.UUID;
 
 public interface ParcelamentoRepository extends JpaRepository<Parcelamento, UUID> {
+
+    void deleteByUserId(UUID userId);
 }

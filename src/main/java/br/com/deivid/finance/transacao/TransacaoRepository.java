@@ -11,6 +11,9 @@ import java.util.UUID;
 
 public interface TransacaoRepository extends JpaRepository<Transacao, UUID> {
 
+    // LGPD: apaga DE VERDADE tudo do usuário (não é soft delete)
+    void deleteByUserId(UUID userId);
+
     // todas as transações do usuário (não apagadas), mais recentes primeiro
     List<Transacao> findByUserIdAndDeletedAtIsNullOrderByDataDescCreatedAtDesc(UUID userId);
 

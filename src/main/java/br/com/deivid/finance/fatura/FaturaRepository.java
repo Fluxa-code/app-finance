@@ -16,4 +16,6 @@ public interface FaturaRepository extends JpaRepository<Fatura, UUID> {
 
     // todas as faturas do usuário (todos os cartões)
     List<Fatura> findByUserIdAndDeletedAtIsNullOrderByAnoDescMesDesc(UUID userId);
+
+    void deleteByUserId(UUID userId);
 }

@@ -8,4 +8,6 @@ import java.util.UUID;
 public interface CategoriaRepository extends JpaRepository<Categoria, UUID> {
 
     List<Categoria> findByUserIdAndDeletedAtIsNullOrderByNome(UUID userId);
+
+    void deleteByUserId(UUID userId);
 }
