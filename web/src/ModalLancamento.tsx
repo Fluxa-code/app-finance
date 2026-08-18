@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, NaoAutenticado } from './api';
-import type { Categoria, Conta } from './tipos';
+import { DIAS_SEMANA, MESES, type Categoria, type Conta } from './tipos';
 
-type Modo = 'SIMPLES' | 'TRANSFERENCIA' | 'PARCELAMENTO';
+type Modo = 'SIMPLES' | 'TRANSFERENCIA' | 'PARCELAMENTO' | 'RECORRENCIA';
 
 type Props = {
   contas: Conta[];
@@ -32,6 +32,12 @@ export default function ModalLancamento({
   const [data, setData] = useState(() => new Date().toISOString().slice(0, 10));
   const [enviando, setEnviando] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+
+  // recorrência
+  const [freq, setFreq] = useState<'MENSAL' | 'SEMANAL' | 'ANUAL'>('MENSAL');
+  const [diaRec, setDiaRec] = useState(String(new Date().getDate()));
+  const [mesRec, setMesRec] = useState(String(new Date().getMonth() + 1));
+  const [dataFim, setDataFim] = useState('');
 
   // Esc fecha o modal — atalho que todo mundo espera
   useEffect(() => {
@@ -80,7 +86,7 @@ export default function ModalLancamento({
         descricao,
         data,
       };
-    } else {
+    } else if (modo === 'PARCELAMENTO') {
       const n = Number(parcelas);
       if (!Number.isInteger(n) || n < 2) {
         setMsg('Parcelamento precisa de 2 parcelas ou mais.');
@@ -95,6 +101,25 @@ export default function ModalLancamento({
         valorTotalCents: valorCents,
         parcelaTotal: n,
         dataPrimeira: data,
+      };
+    } else {
+      if (!descricao.trim()) {
+        setMsg('Recorrência precisa de descrição (ex.: Salário, Aluguel).');
+        return;
+      }
+      caminho = '/recorrencias';
+      body = {
+        id: crypto.randomUUID(),
+        accountId: contaId,
+        categoryId: categoriaId || undefined,
+        tipo,
+        valorCents,
+        descricao: descricao.trim(),
+        frequencia: freq,
+        dia: Number(diaRec),
+        mes: freq === 'ANUAL' ? Number(mesRec) : undefined,
+        dataInicio: data,
+        dataFim: dataFim || undefined,
       };
     }
 
@@ -125,25 +150,32 @@ export default function ModalLancamento({
     <div className="overlay" onClick={aoFechar}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-topo">
-          <h2>Novo lançamento</h2>
+          <h2>{modo === 'RECORRENCIA' ? 'Nova recorrência' : 'Novo lançamento'}</h2>
           <button className="btn-icone" onClick={aoFechar} title="Fechar (Esc)">✕</button>
         </div>
 
         <form className="form" onSubmit={enviar}>
           <div className="abas">
-            {(['SIMPLES', 'TRANSFERENCIA', 'PARCELAMENTO'] as Modo[]).map((m) => (
+            {(
+              [
+                ['SIMPLES', 'Gasto / Receita'],
+                ['TRANSFERENCIA', 'Transferência'],
+                ['PARCELAMENTO', 'Parcelamento'],
+                ['RECORRENCIA', '🔁 Recorrente'],
+              ] as [Modo, string][]
+            ).map(([m, rotulo]) => (
               <button
                 key={m}
                 type="button"
                 className={modo === m ? 'aba ativa' : 'aba'}
                 onClick={() => { setModo(m); setMsg(null); }}
               >
-                {m === 'SIMPLES' ? 'Gasto / Receita' : m === 'TRANSFERENCIA' ? 'Transferência' : 'Parcelamento'}
+                {rotulo}
               </button>
             ))}
           </div>
 
-          {modo === 'SIMPLES' && (
+          {(modo === 'SIMPLES' || modo === 'RECORRENCIA') && (
             <div className="linha">
               <label>
                 Tipo
@@ -194,6 +226,46 @@ export default function ModalLancamento({
             </div>
           )}
 
+          {modo === 'RECORRENCIA' && (
+            <>
+              <div className="linha">
+                <label>
+                  Repete
+                  <select value={freq} onChange={(e) => setFreq(e.target.value as typeof freq)}>
+                    <option value="MENSAL">Todo mês</option>
+                    <option value="SEMANAL">Toda semana</option>
+                    <option value="ANUAL">Todo ano</option>
+                  </select>
+                </label>
+                {freq === 'SEMANAL' ? (
+                  <label>
+                    Dia da semana
+                    <select value={diaRec} onChange={(e) => setDiaRec(e.target.value)}>
+                      {DIAS_SEMANA.map((d, i) => <option key={d} value={i + 1}>{d}</option>)}
+                    </select>
+                  </label>
+                ) : (
+                  <label>
+                    Dia do mês
+                    <input type="number" min={1} max={31} value={diaRec}
+                           onChange={(e) => setDiaRec(e.target.value)} />
+                  </label>
+                )}
+                {freq === 'ANUAL' && (
+                  <label>
+                    Mês
+                    <select value={mesRec} onChange={(e) => setMesRec(e.target.value)}>
+                      {MESES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+                    </select>
+                  </label>
+                )}
+              </div>
+              <p className="dica">
+                Dia 29, 30 ou 31 em mês curto cai no último dia do mês.
+              </p>
+            </>
+          )}
+
           <div className="linha">
             <label>
               {modo === 'PARCELAMENTO' ? 'Valor total (R$)' : 'Valor (R$)'}
@@ -201,9 +273,17 @@ export default function ModalLancamento({
                      onChange={(e) => setValor(e.target.value)} />
             </label>
             <label>
-              {modo === 'PARCELAMENTO' ? 'Data da 1ª parcela' : 'Data'}
+              {modo === 'PARCELAMENTO' ? 'Data da 1ª parcela'
+                : modo === 'RECORRENCIA' ? 'Começa em'
+                : 'Data'}
               <input type="date" value={data} onChange={(e) => setData(e.target.value)} />
             </label>
+            {modo === 'RECORRENCIA' && (
+              <label>
+                Termina em <span className="opcional">(opcional)</span>
+                <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
+              </label>
+            )}
           </div>
 
           <div className="linha">
@@ -224,7 +304,10 @@ export default function ModalLancamento({
           </div>
 
           <button type="submit" disabled={enviando}>
-            {enviando ? 'Lançando…' : modo === 'TRANSFERENCIA' ? 'Transferir' : 'Lançar'}
+            {enviando ? 'Salvando…'
+              : modo === 'TRANSFERENCIA' ? 'Transferir'
+              : modo === 'RECORRENCIA' ? 'Criar recorrência'
+              : 'Lançar'}
           </button>
 
           {msg && <p className="msg">{msg}</p>}

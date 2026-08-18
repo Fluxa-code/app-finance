@@ -102,6 +102,84 @@
   opacity: 0.8;
 }
 
+.nav-badge {
+  margin-left: auto;
+  font-size: 0.68rem;
+  background: var(--gold-soft);
+  color: var(--gold);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  font-weight: 650;
+}
+
+.btn-novo.compacto {
+  padding: 0.55rem 0.9rem;
+  font-size: 0.85rem;
+}
+
+/* ---------- recorrências ---------- */
+.rec-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rec-lista li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem 0.4rem;
+  border-radius: var(--raio-sm);
+}
+
+.rec-lista li + li {
+  border-top: 1px solid var(--border);
+}
+
+.rec-lista li:hover {
+  background: var(--surface-2);
+}
+
+.rec-lista li.pausada {
+  opacity: 0.55;
+}
+
+.rec-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.rec-titulo {
+  font-weight: 600;
+  font-size: 0.92rem;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.rec-sub {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.acoes.sempre {
+  opacity: 1;
+}
+
+.dica {
+  margin: -0.3rem 0 0;
+  font-size: 0.76rem;
+  color: var(--text-faint);
+}
+
+.opcional {
+  font-weight: 400;
+  opacity: 0.6;
+}
+
 /* seção de contas */
 .sec-titulo {
   display: flex;

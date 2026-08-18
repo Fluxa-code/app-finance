@@ -131,6 +131,7 @@ export default function Dashboard({
                     {t.parcelaNum != null && (
                       <em className="badge">{t.parcelaNum}/{t.parcelaTotal}</em>
                     )}
+                    {t.recurringRuleId && <em className="badge">🔁</em>}
                   </span>
                   <span className="rec-conta">{nomeConta(t.accountId)}</span>
                   <span className="rec-data">{formatDataCurta(t.data)}</span>

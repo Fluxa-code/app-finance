@@ -83,6 +83,15 @@ export const api = {
     return resp.json();
   },
 
+  async patch<T>(caminho: string, body?: unknown): Promise<T> {
+    const resp = await request(caminho, {
+      method: 'PATCH',
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    if (!resp.ok) throw new Error(await mensagemDeErro(resp));
+    return resp.json();
+  },
+
   // DELETE responde 204 sem corpo — não tenta ler JSON
   async del(caminho: string): Promise<void> {
     const resp = await request(caminho, { method: 'DELETE' });

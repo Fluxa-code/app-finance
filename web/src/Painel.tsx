@@ -4,12 +4,16 @@ import { useTema } from './useTema';
 import Dashboard from './Dashboard';
 import ModalLancamento from './ModalLancamento';
 import {
-  CORES, formatBRL, formatData, TIPO_ICONE, TIPO_LABEL,
-  type Categoria, type Conta, type GastoCategoria, type Saldo, type Transacao,
+  CORES, descreverRecorrencia, formatBRL, formatData, TIPO_ICONE, TIPO_LABEL,
+  type Categoria, type Conta, type GastoCategoria, type Recorrencia, type Saldo, type Transacao,
 } from './tipos';
 import './App.css';
 
-type Vista = { tela: 'INICIO' } | { tela: 'CONTA'; id: string } | { tela: 'CATEGORIAS' };
+type Vista =
+  | { tela: 'INICIO' }
+  | { tela: 'CONTA'; id: string }
+  | { tela: 'CATEGORIAS' }
+  | { tela: 'RECORRENCIAS' };
 
 export default function Painel({ aoSair }: { aoSair: () => void }) {
   const { tema, alternar } = useTema();
@@ -21,6 +25,7 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
   const [transacoesMes, setTransacoesMes] = useState<Transacao[]>([]);
   const [relatorio, setRelatorio] = useState<GastoCategoria[]>([]);
   const [extrato, setExtrato] = useState<Transacao[]>([]);
+  const [recorrencias, setRecorrencias] = useState<Recorrencia[]>([]);
 
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -76,6 +81,7 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
         setSaldos(await Promise.all(c.map((x) => api.get<Saldo>(`/contas/${x.id}/saldo`))));
         setCategorias(await api.get<Categoria[]>('/categorias'));
         setRecentes(await api.get<Transacao[]>('/transacoes'));
+        setRecorrencias(await api.get<Recorrencia[]>('/recorrencias'));
         setErro(null);
       } catch (err) {
         if (!tratarFalha(err)) setErro('Não consegui falar com a API. O backend está rodando?');
@@ -164,6 +170,17 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
     }
   }
 
+  async function alternarRecorrencia(r: Recorrencia) {
+    try { await api.patch(`/recorrencias/${r.id}/alternar`); recarregar(); }
+    catch (err) { if (!tratarFalha(err)) alert('Erro ao alterar.'); }
+  }
+
+  async function excluirRecorrencia(r: Recorrencia) {
+    if (!confirm(`Excluir "${r.descricao}"? Os lançamentos FUTUROS somem; os passados ficam.`)) return;
+    try { await api.del(`/recorrencias/${r.id}`); recarregar(); }
+    catch (err) { if (!tratarFalha(err)) alert('Erro ao excluir.'); }
+  }
+
   async function excluirCategoria(c: Categoria) {
     if (!confirm(`Excluir "${c.nome}"? Os lançamentos dela viram "Sem categoria".`)) return;
     try { await api.del(`/categorias/${c.id}`); recarregar(); }
@@ -237,6 +254,15 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
             onClick={() => { setVista({ tela: 'INICIO' }); setMenuMobile(false); }}
           >
             <span className="nav-icone">◧</span> Início
+          </button>
+          <button
+            className={vista.tela === 'RECORRENCIAS' ? 'nav-item ativo' : 'nav-item'}
+            onClick={() => { setVista({ tela: 'RECORRENCIAS' }); setMenuMobile(false); }}
+          >
+            <span className="nav-icone">🔁</span> Recorrentes
+            {recorrencias.filter((r) => r.ativa).length > 0 && (
+              <span className="nav-badge">{recorrencias.filter((r) => r.ativa).length}</span>
+            )}
           </button>
           <button
             className={vista.tela === 'CATEGORIAS' ? 'nav-item ativo' : 'nav-item'}
@@ -337,6 +363,7 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
                           {t.descricao || '(sem descrição)'}
                           {t.parcelaNum != null && <em className="badge">{t.parcelaNum}/{t.parcelaTotal}</em>}
                           {t.tipo === 'TRANSFERENCIA' && <em className="badge transf">transferência</em>}
+                          {t.recurringRuleId && <em className="badge" title="Gerado por recorrência">🔁</em>}
                         </span>
                         <span className={t.valorCents < 0 ? 'ext-valor negativo' : 'ext-valor positivo'}>
                           {formatBRL(t.valorCents)}
@@ -350,6 +377,61 @@ export default function Painel({ aoSair }: { aoSair: () => void }) {
                       </li>
                     ),
                   )}
+                </ul>
+              )}
+            </section>
+          </>
+        )}
+
+        {vista.tela === 'RECORRENCIAS' && (
+          <>
+            <header className="cabecalho">
+              <div>
+                <span className="cab-tipo">Lançamentos que se repetem</span>
+                <h2>Recorrentes</h2>
+              </div>
+              <button className="btn-novo compacto" onClick={() => setModalAberto(true)}>
+                + Nova recorrência
+              </button>
+            </header>
+
+            <section className="bloco">
+              {recorrencias.length === 0 ? (
+                <p className="vazio">
+                  Nenhuma recorrência ainda. Salário, aluguel, assinatura — cadastra uma vez,
+                  o Kofre lança sozinho todo mês.
+                </p>
+              ) : (
+                <ul className="rec-lista">
+                  {recorrencias.map((r) => {
+                    const cat = categorias.find((c) => c.id === r.categoryId);
+                    const conta = contas.find((c) => c.id === r.accountId);
+                    return (
+                      <li key={r.id} className={r.ativa ? '' : 'pausada'}>
+                        <i className="ponto" style={{ background: cat?.cor ?? 'var(--text-faint)' }} />
+                        <div className="rec-info">
+                          <span className="rec-titulo">
+                            {r.descricao}
+                            {!r.ativa && <em className="badge">pausada</em>}
+                          </span>
+                          <span className="rec-sub">
+                            {descreverRecorrencia(r)} · {conta?.nome ?? '—'}
+                            {r.dataFim && ` · até ${formatData(r.dataFim)}`}
+                          </span>
+                        </div>
+                        <span className={r.tipo === 'SAIDA' ? 'ext-valor negativo' : 'ext-valor positivo'}>
+                          {r.tipo === 'SAIDA' ? '-' : '+'}{formatBRL(r.valorCents)}
+                        </span>
+                        <span className="acoes sempre">
+                          <button className="btn-icone" title={r.ativa ? 'Pausar' : 'Retomar'}
+                                  onClick={() => alternarRecorrencia(r)}>
+                            {r.ativa ? '⏸' : '▶'}
+                          </button>
+                          <button className="btn-icone" title="Excluir" onClick={() => excluirRecorrencia(r)}>🗑️</button>
+                        </span>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </section>

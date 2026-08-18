@@ -16,7 +16,33 @@ export type Transacao = {
   parcelaTotal: number | null;
   transferId: string | null;
   parcelamentoId: string | null;
+  recurringRuleId: string | null;
 };
+
+export type Recorrencia = {
+  id: string;
+  accountId: string;
+  categoryId: string | null;
+  tipo: 'ENTRADA' | 'SAIDA';
+  valorCents: number;
+  descricao: string;
+  frequencia: 'MENSAL' | 'SEMANAL' | 'ANUAL';
+  dia: number;
+  mes: number | null;
+  dataInicio: string;
+  dataFim: string | null;
+  ultimaGeracao: string | null;
+  ativa: boolean;
+};
+
+export const DIAS_SEMANA = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+
+/** descreve a regra em português: "todo dia 5", "toda segunda", "todo 15 de março" */
+export function descreverRecorrencia(r: Recorrencia): string {
+  if (r.frequencia === 'SEMANAL') return `toda ${DIAS_SEMANA[r.dia - 1].toLowerCase()}`;
+  if (r.frequencia === 'ANUAL') return `todo dia ${r.dia} de ${MESES[(r.mes ?? 1) - 1].toLowerCase()}`;
+  return `todo dia ${r.dia}`;
+}
 
 export type GastoCategoria = {
   categoriaId: string | null;
